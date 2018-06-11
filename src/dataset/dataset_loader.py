@@ -6,12 +6,14 @@ import numpy as np
 import cv2
 
 def load(path, threshold, size, window):
-    '''Prepares the input pipeline to train the model. Each batch is made up of 4 frames [-2, -1, +1, +2]
-    and a ground truth frame as the expected value to be generated from the network.
+    '''Prepares the input pipeline to train the model. Each batch is made up of 
+    n frames [-n, ..., -2, -1, +1, +2, ..., +n] and a ground truth frame 
+    as the expected value to be generated from the network.
 
     path(str) -- the directory where the dataset is currently stored
     threshold(int) -- the maximum threshold to exclude frames with too much change
     size(int) -- the batch size for the data pipeline
+    window(int) -- the window size
     '''
 
     assert threshold > 100

@@ -16,20 +16,21 @@ def load(path, threshold, size):
 
     # load the available frames, group by 5
     files = os.listdir(path)
-    groups = [
-        files[i:i + 5]
-        for i in range(len(files) - 4)
-    ]
+    groups, labels = [], []
+    for i in range(len(files) - 4):
+        groups += [files[i: i + 2] + files[i + 3: i + 5]]
+        labels += [files[i + 2]]
 
     # create the dataset pipeline
     return \
-        tf.data.Dataset.from_tensor_slices(groups) \
+        tf.data.Dataset.from_tensor_slices((groups, labels)) \
         .shuffle(len(groups)) \
-        .filter(lambda g: tf.py_func(tf_ensure_same_video_origin, inp=[g], Tout=[tf.bool])) \
-        .map(lambda g: tf.py_func(tf_load_images, inp=[g, path], Tout=[tf.float32]), num_parallel_calls=cpu_count()) \
-        .filter(lambda g: tf.py_func(ensure_difference_threshold, inp=[g, threshold], Tout=[tf.bool])) \
+        .filter(lambda x, y: tf.py_func(tf_ensure_same_video_origin, inp=[x], Tout=[tf.bool])) \
+        .map(lambda x, y: tf.py_func(tf_load_images, inp=[x, y, path], Tout=[tf.float32, tf.float32]), num_parallel_calls=cpu_count()) \
+        .filter(lambda x, y: tf.py_func(ensure_difference_threshold, inp=[x, threshold], Tout=[tf.bool])) \
         .batch(size) \
         .prefetch(1)
+        
 
 # ====================
 # auxiliary methods
@@ -41,21 +42,25 @@ def tf_ensure_same_video_origin(paths):
 
     paths(list<tf.string) -- a tensor with the input filenames in the current group
     '''
-
+    
     parts1, parts2 = str(paths[0]).split('_'), str(paths[-1]).split('_')
     return parts1[0] == parts2[0] and parts1[1] == parts2[1]
 
-def tf_load_images(filenames, directory):
+def tf_load_images(samples, label, directory):
     '''Loads and returns a list of images from the input list of filenames
     
-    filenames(list<tf.string>) -- a tensor with the list of filenames to load
+    samples(list<tf.string>) -- a tensor with the list of filenames to load
+    label(tf.string) -- a tensor with the filename of the ground truth image
     directory(tf.string) -- the parent directory for the input files
     '''
     
-    return np.array([
-        cv2.imread('{}\\{}'.format(str(directory)[2:-1], str(filename)[2:-1])).astype(np.float32)
-        for filename in filenames
+    x = np.array([
+        cv2.imread('{}\\{}'.format(str(directory)[2:-1], str(sample)[2:-1])).astype(np.float32)
+        for sample in samples
     ], dtype=np.float32, copy=False)
+    y = cv2.imread('{}\\{}'.format(str(directory)[2:-1], str(label)[2:-1])).astype(np.float32)
+
+    return x, y
 
 def ensure_difference_threshold(images, threshold):
     '''Computes the mean squared error between a pair of images

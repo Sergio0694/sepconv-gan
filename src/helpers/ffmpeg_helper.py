@@ -1,5 +1,5 @@
 from pathlib import Path
-from subprocess import call, Popen, PIPE, STDOUT
+from subprocess import call, Popen, PIPE, STDOUT, TimeoutExpired
 
 def extract_frames(video_path, output_folder, x, y=-1, start=0, duration=60, suffix='', extension='jpg'):
     '''Exports a series of frames from the input video to the specified folder.
@@ -13,24 +13,28 @@ def extract_frames(video_path, output_folder, x, y=-1, start=0, duration=60, suf
     suffix(str) -- an identifier for the exported frames
     extension(str) -- the preferred image extension for the exported frames (jpg|png|bmp)
     '''
-
+    print('start={}, duration={}'.format(start, duration))
     assert start > 0
     assert duration > 1 # really?
 
     Path(output_folder).mkdir(exist_ok=True)
-    call([
-        'ffmpeg',
-        '-ss', str(start),
-        '-t', str(duration),
-        '-i', video_path,
-        '-vf', 'scale={}:{}'.format(x, y),
-        '-q:v', '1',
-        '-qmin', '1',
-        '-qmax', '1',
-        '-pix_fmt', 'rgb24',
-        '-v', 'quiet',
-        '{}\\{}%03d.{}'.format(output_folder, suffix, extension)
-    ])
+    try:
+        call([
+            'ffmpeg',
+            '-ss', str(start),
+            '-t', str(duration),
+            '-i', video_path,
+            '-vf', 'scale={}:{}'.format(x, y),
+            '-q:v', '1',
+            '-qmin', '1',
+            '-qmax', '1',
+            '-pix_fmt', 'rgb24',
+            '-v', 'quiet',
+            '{}\\{}%03d.{}'.format(output_folder, suffix, extension)
+        ], timeout=10)
+        return True
+    except TimeoutExpired:
+        return False
 
 def get_video_duration(video_path):
     '''Returns the duration of the video specified by the given path, in seconds

@@ -1,6 +1,6 @@
 import os
 from helpers.ffmpeg_helper import *
-from helpers.logger import LOG, BAR, RESET_LINE
+from helpers.logger import LOG, INFO, BAR, RESET_LINE
 from __MACRO__ import *
 
 def build_dataset(source_path, output_path, seconds, splits, x, y=-1, extensions=['mkv', 'avi', 'mp4']):
@@ -22,7 +22,7 @@ def build_dataset(source_path, output_path, seconds, splits, x, y=-1, extensions
     assert seconds > 1          # what's the point otherwise?
     assert splits >= 1
 
-    i, split_seconds = 0, seconds // splits
+    i, split_seconds, min_duration = 0, seconds // splits, seconds * (splits + 1)
     assert split_seconds >= 1   # edge case
     ends = tuple(['.{}'.format(extension) for extension in extensions])
     
@@ -35,19 +35,23 @@ def build_dataset(source_path, output_path, seconds, splits, x, y=-1, extensions
 
                 # check the video duration, skip if needed
                 duration = get_video_duration(video_path)
-                if duration < split_seconds:
+                if duration < min_duration:
+                    if VERBOSE_MODE:
+                        INFO('Video too short: {}s'.format(duration))
                     continue
-                
+
                 # extract frames evenly from the specified number of video sections
                 step = duration // (splits + 1)
                 for chunk in range(splits):
                     if VERBOSE_MODE:
                         BAR(chunk, splits)
-                    extract_frames(
-                        video_path, output_path, x, y,
-                        step * (chunk + 1) - (split_seconds // 2), # offset to before the current chunk
-                        split_seconds,
-                        'v{}_s{}_'.format(i, chunk))
-                if VERBOSE_MODE:
-                    RESET_LINE()
+                    if not extract_frames(
+                            video_path, output_path, x, y,
+                            step * (chunk + 1) - (split_seconds // 2), # offset to before the current chunk
+                            split_seconds,
+                            'v{}_s{}_'.format(i, chunk)):
+                        RESET_LINE()
+                        INFO('Failed at chunk {}'.format(chunk))
+                        break
+                RESET_LINE()
                 i += 1

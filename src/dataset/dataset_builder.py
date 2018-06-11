@@ -1,5 +1,5 @@
 import os
-from ffmpeg_helper import *
+from helpers.ffmpeg_helper import *
 
 def build_dataset(source_path, output_path, resolution, seconds, splits, extensions=['mkv', 'avi', 'mp4']):
     '''Builds a dataset in the target directory by reading all the existing movie

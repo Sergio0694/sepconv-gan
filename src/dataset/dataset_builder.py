@@ -1,7 +1,7 @@
 import os
 from helpers.ffmpeg_helper import *
 
-def build_dataset(source_path, output_path, resolution, seconds, splits, extensions=['mkv', 'avi', 'mp4']):
+def build_dataset(source_path, output_path, seconds, splits, x, y=-1, extensions=['mkv', 'avi', 'mp4']):
     '''Builds a dataset in the target directory by reading all the existing movie
     files from the source directory and converting them to the specified resolution.
     
@@ -10,10 +10,13 @@ def build_dataset(source_path, output_path, resolution, seconds, splits, extensi
     resolution(int) -- the desired horizontal resolution of the exported frames
     seconds(int) -- the number of seconds to extract from each video file
     splits(int) -- the number of separate video sections to use to extract the frames
+    x(int) -- the desired horizontal resolution of the exported frames
+    y(int) -- the desired vertical resolution of the exported frames
     extensions(list<str>) -- a list of video extensions to filter'''
 
     assert extensions           # ensure at least an extension is present
-    assert resolution >= 480    # not much sense in going lower than that
+    assert x >= 480             # not much sense in going lower than that
+    assert y >= 270 or y == -1  # minimum resolution
     assert seconds > 1          # what's the point otherwise?
     assert splits >= 1
 
@@ -35,7 +38,7 @@ def build_dataset(source_path, output_path, resolution, seconds, splits, extensi
                 step = duration // (splits + 1)
                 for chunk in range(splits):
                     extract_frames(
-                        video_path, resolution, output_path,
+                        video_path, output_path, x, y,
                         step * (chunk + 1) - (split_seconds // 2), # offset to before the current chunk
                         split_seconds,
                         'v{}_s{}_'.format(i, chunk))

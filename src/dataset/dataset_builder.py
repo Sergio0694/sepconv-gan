@@ -1,5 +1,7 @@
 import os
 from helpers.ffmpeg_helper import *
+from helpers.logger import LOG, BAR, RESET_LINE
+from __MACRO__ import *
 
 def build_dataset(source_path, output_path, seconds, splits, x, y=-1, extensions=['mkv', 'avi', 'mp4']):
     '''Builds a dataset in the target directory by reading all the existing movie
@@ -28,6 +30,8 @@ def build_dataset(source_path, output_path, seconds, splits, x, y=-1, extensions
         for f in files:
             if f.endswith(ends):
                 video_path = '{}\\{}'.format(subdir, f)
+                if VERBOSE_MODE:
+                    LOG(video_path)
 
                 # check the video duration, skip if needed
                 duration = get_video_duration(video_path)
@@ -37,9 +41,13 @@ def build_dataset(source_path, output_path, seconds, splits, x, y=-1, extensions
                 # extract frames evenly from the specified number of video sections
                 step = duration // (splits + 1)
                 for chunk in range(splits):
+                    if VERBOSE_MODE:
+                        BAR(chunk, splits)
                     extract_frames(
                         video_path, output_path, x, y,
                         step * (chunk + 1) - (split_seconds // 2), # offset to before the current chunk
                         split_seconds,
                         'v{}_s{}_'.format(i, chunk))
+                if VERBOSE_MODE:
+                    RESET_LINE()
                 i += 1

@@ -1,7 +1,7 @@
 from functools import reduce
 import numpy as np
 import cv2
-from logger import LOG, INFO
+from helpers.logger import LOG, INFO
 
 def display_image_difference(path1, path2):
     '''Computes the mean squared error between a pair of images and shows additional info

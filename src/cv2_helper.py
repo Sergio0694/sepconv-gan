@@ -8,9 +8,6 @@ def load_images(filenames, directory):
     directory(str) -- the parent directory for the input files
     '''
     
-    print('=========== FILES ===========')
-    print(filenames)
-    print('===========')
     return np.array([
         cv2.imread('{}\\{}'.format(str(directory)[2:-1], str(filename)[2:-1])).astype(np.float32)
         for filename in filenames

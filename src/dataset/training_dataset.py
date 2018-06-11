@@ -5,7 +5,7 @@ import tensorflow as tf
 import numpy as np
 import cv2
 
-def load(path, threshold, size):
+def load(path, threshold, size, window):
     '''Prepares the input pipeline to train the model. Each batch is made up of 4 frames [-2, -1, +1, +2]
     and a ground truth frame as the expected value to be generated from the network.
 
@@ -14,12 +14,16 @@ def load(path, threshold, size):
     size(int) -- the batch size for the data pipeline
     '''
 
+    assert threshold > 100
+    assert size > 1         # you don't say?
+    assert window >= 1      # same here
+
     # load the available frames, group by 5
     files = os.listdir(path)
     groups, labels = [], []
-    for i in range(len(files) - 4):
-        groups += [files[i: i + 2] + files[i + 3: i + 5]]
-        labels += [files[i + 2]]
+    for i in range(len(files) - window * 2):
+        groups += [files[i: i + window] + files[i + window + 1: i + 2 * window + 1]]
+        labels += [files[i + window]]
 
     # create the dataset pipeline
     return \

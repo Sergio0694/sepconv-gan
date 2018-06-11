@@ -20,8 +20,6 @@ def INFO(text):
 
     print('{} >>'.format(Fore.LIGHTCYAN_EX), end=' ')
     print(text, flush=True)
-    else:
-        print('{}]'.format(Fore.LIGHTYELLOW_EX), flush=True)
 
 def BAR(x, y):
     '''Displays a simple progress bar with

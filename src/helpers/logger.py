@@ -1,4 +1,3 @@
-from enum import Enum
 from colorama import init, Fore
 
 # initializes colorama
@@ -21,24 +20,25 @@ def INFO(text):
 
     print('{} >>'.format(Fore.LIGHTCYAN_EX), end=' ')
     print(text, flush=True)
-
-class Progress(Enum):
-    '''An enum that indicates a progress step when updating the UI
-    '''
-
-    START = 0
-    STEP = 1
-    END = 2
-
-def PROGRESS(info):
-    '''Displays a simple ASCII progress bar with an indefinite total progress
-
-    info(Progress) -- the type of progress step to display
-    '''
-
-    if info == Progress.START:
-        print('{}['.format(Fore.LIGHTYELLOW_EX), end='', flush=True)
-    elif info == Progress.STEP:
-        print('{}='.format(Fore.LIGHTYELLOW_EX), end='')
     else:
         print('{}]'.format(Fore.LIGHTYELLOW_EX), flush=True)
+
+def BAR(x, y):
+    '''Displays a simple progress bar with
+
+    x(int) -- the number of completed steps
+    y(int) -- the total number of steps to perform
+    '''
+
+    assert x >= 0 and x <= y
+
+    if x < y:
+        print('\r{}[{}{}]'.format(Fore.LIGHTYELLOW_EX, '=' * x, ' ' * (y - x)), end='', flush=True)
+    else:
+        print('', end='\r', flush=True) # reset the current line
+
+def RESET_LINE():
+    '''Resets the current line by writing a carriage return character
+    '''
+
+    print('', end='\r', flush=True)

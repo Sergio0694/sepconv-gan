@@ -28,12 +28,12 @@ def run():
         # setup the loss function
         LOG('Loss setup')
         with tf.name_scope('loss'):
-            loss = 0.5 * tf.reduce_sum((y - yHat) ** 2)
+            loss = 0.5 * tf.reduce_sum((y - yHat / 255.0) ** 2)
         with tf.name_scope('adam'):
             adam = tf.train.AdamOptimizer().minimize(loss)
 
         # output image
-        uint8_img = tf.image.convert_image_dtype(y, tf.uint8, name='yHat')        
+        uint8_img = tf.image.convert_image_dtype(y * 255.0, tf.uint8, name='yHat')        
         
         # summaries
         tf.summary.scalar('TRAIN_loss', loss)
@@ -61,7 +61,7 @@ def run():
                     # log to tensorboard
                     _, score, summary = session.run([adam, loss, merged_summary])
                     writer.add_summary(summary, i)
-                    INFO('#{}:\t{}'.format(i % TENSORBOARD_LOG_INTERVAL, score))
+                    INFO('#{}:\t{}'.format(i, score))
 
                     # save the model
                     saver.save(session, TENSORBOARD_RUN_DIR, global_step=i, write_meta_graph=i == TENSORBOARD_LOG_INTERVAL)

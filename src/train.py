@@ -39,13 +39,23 @@ def run():
 
     # train the model
     debug_tools.LOG('Training starting...')
+    model_dir = '{}\\{}'.format(TENSORBOARD_DIR, MODEL_ID)
     with tf.Session(graph=graph) as session:
-        with tf.summary.FileWriter(TENSORBOARD_DIR, session.graph) as writer:
+        with tf.summary.FileWriter(model_dir, session.graph) as writer:
+
+            # initialization
             session.run(iterator.initializer)
             session.run(tf.global_variables_initializer())
+            saver = tf.train.Saver(max_to_keep=MAX_MODELS_TO_KEEP)
+            
             for i in range(TRAINING_TOTAL_ITERATIONS):
-                if i % TENSORBOARD_LOG_INTERVAL:
+                if i > 0 and i % TENSORBOARD_LOG_INTERVAL == 0:
+
+                    # log to tensorboard
                     _, summary = session.run([adam, merged_summary])
                     writer.add_summary(summary, i)
+
+                    # save the model
+                    saver.save(session, model_dir, global_step=i, write_meta_graph=i == TENSORBOARD_LOG_INTERVAL)
                 else:
                     _ = session.run(adam)

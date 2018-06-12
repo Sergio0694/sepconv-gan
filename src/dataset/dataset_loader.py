@@ -65,7 +65,7 @@ def load_core(path, window):
         .shuffle(len(groups), reshuffle_each_iteration=True) \
         .map(lambda x, y: tf.py_func(tf_load_images, inp=[x, y, path], Tout=[tf.float32, tf.float32]), num_parallel_calls=cpu_count()) \
         .filter(lambda x, y: tf.py_func(ensure_difference_threshold, inp=[x], Tout=[tf.bool])) \
-        .repeat
+        .repeat()
 
 def tf_load_images(samples, label, directory):
     '''Loads and returns a list of images from the input list of filenames

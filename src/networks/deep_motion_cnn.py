@@ -68,5 +68,5 @@ def get_network_v2(x):
     conv5_a = tf.layers.conv2d(up2, 32, 3, activation=tf.nn.relu, padding='same') + conv1_b
     conv5_b = tf.layers.conv2d(conv5_a, 32, 3, activation=tf.nn.relu, padding='same')
 
-    y = tf.layers.conv2d(conv5_b, 5, 5, activation=tf.nn.sigmoid, padding='same')
+    y = tf.layers.conv2d(conv5_b, 3, 5, activation=tf.nn.sigmoid, padding='same')
     return y

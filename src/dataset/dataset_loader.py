@@ -34,7 +34,6 @@ def load_test(path, window):
     groups, labels, pipeline = load_core(path, window)
 
     if VERBOSE_MODE:
-        LOG('{} test sample(s)'.format(len(groups)))
         for s in zip(groups, labels):
             INFO('{} ---> {}'.format(s[0], s[1]))
     return pipeline.batch(len(groups))
@@ -58,6 +57,9 @@ def load_core(path, window):
         if info1[0] == info2[0] and info1[1] == info2[1]:
             groups += [candidates]
             labels += [files[i + window]]
+    if VERBOSE_MODE:
+        LOG('{} total dataset file(s)'.format(len(files)))
+        INFO('{} generated sample(s)'.format(len(groups)))
 
     # create the dataset pipeline
     return groups, labels, \

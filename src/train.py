@@ -27,6 +27,10 @@ def run():
         with tf.name_scope('adam'):
             adam = tf.train.AdamOptimizer().minimize(loss)
         
+        # summaries
+        tf.summary.scalar('TRAIN_loss', loss)
+        merged_summary = tf.summary.merge_all()
+
         # model info (while inside the graph)
         debug_tools.INFO('{} total variable(s)'.format(np.sum([
             np.prod(v.get_shape().as_list()) 
@@ -35,9 +39,18 @@ def run():
 
     # train the model
     debug_tools.LOG('Training starting...')
-    with tf.Session(graph=graph) as sess:
-        sess.run(iterator.initializer)
-        sess.run(tf.global_variables_initializer())
-        for i in range(TRAINING_TOTAL_ITERATIONS):
-            score, _ = sess.run([loss, adam])
-            debug_tools.LOG('#{}:\t{}'.format(i, score))
+    with tf.Session(graph=graph) as session:
+        with tf.summary.FileWriter(TENSORBOARD_DIR, session.graph) as writer:
+            session.run(iterator.initializer)
+            session.run(tf.global_variables_initializer())
+            for i in range(TRAINING_TOTAL_ITERATIONS):
+                if i % TENSORBOARD_LOG_INTERVAL:
+                    _, summary = session.run([adam, merged_summary])
+                    writer.add_summary(summary, i)
+                else:
+                    _ = session.run(adam)
+
+                # check the progress
+                if i > 0 and i % CHECK_LOSS_INTERVAL == 0:
+                    score = session.run(loss)
+                    print('#{}: {}'.format(i, score))

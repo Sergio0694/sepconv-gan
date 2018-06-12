@@ -1,11 +1,11 @@
 import os
-import cv2
 from multiprocessing import cpu_count
+import cv2
 import tensorflow as tf
 import numpy as np
 from __MACRO__ import *
 
-def load(path, size, window):
+def load_train(path, size, window):
     '''Prepares the input pipeline to train the model. Each batch is made up of 
     n frames [-n, ..., -2, -1, +1, +2, ..., +n] and a ground truth frame 
     as the expected value to be generated from the network.
@@ -15,7 +15,32 @@ def load(path, size, window):
     window(int) -- the window size
     '''
 
-    assert size > 1         # you don't say?
+    assert size > 1     # you don't say?
+
+    _, pipeline = load_core(path, window)
+    return pipeline.batch(size).prefetch(1)
+        
+def load_test(path, window):
+    '''Prepares the input pipeline to test the model. Each batch is made up of 
+    n frames [-n, ..., -2, -1, +1, +2, ..., +n] and a ground truth frame 
+    as the expected value to be generated from the network.
+
+    path(str) -- the directory where the dataset is currently stored
+    size(int) -- the batch size for the data pipeline
+    window(int) -- the window size
+    '''
+
+    n, pipeline = load_core(path, window)
+    return pipeline.batch(n)
+
+# ====================
+# auxiliary methods
+# ====================
+
+def load_core(path, window):
+    '''Auxiliary method for the load_train and load_test methods
+    '''
+
     assert window >= 1      # same here
 
     # load the available frames, group by 5
@@ -26,20 +51,13 @@ def load(path, size, window):
         labels += [files[i + window]]
 
     # create the dataset pipeline
-    return \
+    return len(groups), \
         tf.data.Dataset.from_tensor_slices((groups, labels)) \
         .shuffle(len(groups), reshuffle_each_iteration=True) \
         .filter(lambda x, y: tf.py_func(tf_ensure_same_video_origin, inp=[x], Tout=[tf.bool])) \
         .map(lambda x, y: tf.py_func(tf_load_images, inp=[x, y, path], Tout=[tf.float32, tf.float32]), num_parallel_calls=cpu_count()) \
         .filter(lambda x, y: tf.py_func(ensure_difference_threshold, inp=[x], Tout=[tf.bool])) \
-        .repeat() \
-        .batch(size) \
-        .prefetch(1)
-        
-
-# ====================
-# auxiliary methods
-# ====================
+        .repeat()
 
 def tf_ensure_same_video_origin(paths):
     '''Ensures the input frames all belong to the same video section.

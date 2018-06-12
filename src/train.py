@@ -1,9 +1,11 @@
+import cv2
 import tensorflow as tf
 import numpy as np
 from __MACRO__ import *
 import dataset.dataset_loader as data_loader
-import helpers.debug_tools as debug_tools
+from helpers.logger import LOG, INFO
 from networks import deep_motion_cnn
+from pathlib import Path
 
 def run():
 
@@ -11,40 +13,45 @@ def run():
     with graph.as_default():
 
         # initialize the dataset
-        debug_tools.LOG('Creating iterator')
-        pipeline = data_loader.load(TRAINING_DATASET_PATH, BATCH_SIZE, 1)
-        iterator = pipeline.make_initializable_iterator()
+        LOG('Creating datasets')
+        train_dataset = data_loader.load_train(TRAINING_DATASET_PATH, BATCH_SIZE, 1)
+        test_dataset = data_loader.load_test(TEST_DATASET_PATH, 1)
+        iterator = tf.data.Iterator.from_structure(train_dataset.output_types, train_dataset.output_shapes)
         x, yHat = iterator.get_next()
+        train_init_op = iterator.make_initializer(train_dataset)
+        test_init_op = iterator.make_initializer(test_dataset)
 
         # change this line to choose the model to train
-        debug_tools.LOG('Creating model')
+        LOG('Creating model')
         y = deep_motion_cnn.get_network(x)    
 
         # setup the loss function
-        debug_tools.LOG('Loss setup')
+        LOG('Loss setup')
         with tf.name_scope('loss'):
             loss = 0.5 * tf.reduce_sum((y - yHat) ** 2)
         with tf.name_scope('adam'):
             adam = tf.train.AdamOptimizer().minimize(loss)
+
+        # output image
+        uint8_img = tf.image.convert_image_dtype(y, tf.uint8, name='yHat')        
         
         # summaries
         tf.summary.scalar('TRAIN_loss', loss)
         merged_summary = tf.summary.merge_all()
 
         # model info (while inside the graph)
-        debug_tools.INFO('{} total variable(s)'.format(np.sum([
+        INFO('{} total variable(s)'.format(np.sum([
             np.prod(v.get_shape().as_list()) 
             for v in tf.trainable_variables()
         ])))
 
     # train the model
-    debug_tools.LOG('Training starting...')
-    model_dir = '{}\\{}'.format(TENSORBOARD_DIR, MODEL_ID)
+    LOG('Training starting...')
     with tf.Session(graph=graph) as session:
-        with tf.summary.FileWriter(model_dir, session.graph) as writer:
+        with tf.summary.FileWriter(TENSORBOARD_RUN_DIR, session.graph) as writer:
 
             # initialization
-            session.run(iterator.initializer)
+            session.run(train_init_op)
             session.run(tf.global_variables_initializer())
             saver = tf.train.Saver(max_to_keep=MAX_MODELS_TO_KEEP)
             
@@ -52,10 +59,23 @@ def run():
                 if i > 0 and i % TENSORBOARD_LOG_INTERVAL == 0:
 
                     # log to tensorboard
-                    _, summary = session.run([adam, merged_summary])
+                    _, score, summary = session.run([adam, loss, merged_summary])
                     writer.add_summary(summary, i)
+                    INFO('#{}:\t{}'.format(i % TENSORBOARD_LOG_INTERVAL, score))
 
                     # save the model
-                    saver.save(session, model_dir, global_step=i, write_meta_graph=i == TENSORBOARD_LOG_INTERVAL)
+                    saver.save(session, TENSORBOARD_RUN_DIR, global_step=i, write_meta_graph=i == TENSORBOARD_LOG_INTERVAL)
+
+                    # test the model
+                    session.run(test_init_op)
+                    predictions, ground_truth = session.run([uint8_img, yHat])
+                    session.run(train_init_op)
+
+                    # save the generated images to track progress
+                    predictions_dir = '{}\\_{}'.format(TENSORBOARD_RUN_DIR, i)
+                    Path(predictions_dir).mkdir(exist_ok=True)
+                    for j in range(predictions.shape[0]):
+                        cv2.imwrite('{}\\{}_yHat.jpg'.format(predictions_dir, j), predictions[j], [int(cv2.IMWRITE_JPEG_QUALITY), 100])
+                        cv2.imwrite('{}\\{}_gt.jpg'.format(predictions_dir, j), ground_truth[j], [int(cv2.IMWRITE_JPEG_QUALITY), 100])
                 else:
                     _ = session.run(adam)

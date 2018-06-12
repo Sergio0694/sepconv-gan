@@ -1,9 +1,9 @@
 import os
-from __MACRO__ import *
+import cv2
 from multiprocessing import cpu_count
 import tensorflow as tf
 import numpy as np
-import cv2
+from __MACRO__ import *
 
 def load(path, size, window):
     '''Prepares the input pipeline to train the model. Each batch is made up of 
@@ -28,10 +28,11 @@ def load(path, size, window):
     # create the dataset pipeline
     return \
         tf.data.Dataset.from_tensor_slices((groups, labels)) \
-        .shuffle(len(groups)) \
+        .shuffle(len(groups), reshuffle_each_iteration=True) \
         .filter(lambda x, y: tf.py_func(tf_ensure_same_video_origin, inp=[x], Tout=[tf.bool])) \
         .map(lambda x, y: tf.py_func(tf_load_images, inp=[x, y, path], Tout=[tf.float32, tf.float32]), num_parallel_calls=cpu_count()) \
         .filter(lambda x, y: tf.py_func(ensure_difference_threshold, inp=[x], Tout=[tf.bool])) \
+        .repeat() \
         .batch(size) \
         .prefetch(1)
         

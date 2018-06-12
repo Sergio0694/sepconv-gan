@@ -23,7 +23,7 @@ def run():
 
         # change this line to choose the model to train
         LOG('Creating model')
-        y = deep_motion_cnn.get_network(x)    
+        y = deep_motion_cnn.get_network_v2(x)    
 
         # setup the loss function
         LOG('Loss setup')

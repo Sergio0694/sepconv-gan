@@ -49,8 +49,3 @@ def run():
                     writer.add_summary(summary, i)
                 else:
                     _ = session.run(adam)
-
-                # check the progress
-                if i > 0 and i % CHECK_LOSS_INTERVAL == 0:
-                    score = session.run(loss)
-                    print('#{}: {}'.format(i, score))

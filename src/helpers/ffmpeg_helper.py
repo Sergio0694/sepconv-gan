@@ -13,7 +13,7 @@ def extract_frames(video_path, output_folder, x, y=-1, start=0, duration=60, suf
     suffix(str) -- an identifier for the exported frames
     extension(str) -- the preferred image extension for the exported frames (jpg|png|bmp)
     '''
-    print('start={}, duration={}'.format(start, duration))
+    
     assert start > 0
     assert duration > 1 # really?
 

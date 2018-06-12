@@ -38,6 +38,24 @@ def load_test(path, window):
             INFO('{} ---> {}'.format(s[0], s[1]))
     return pipeline.batch(len(groups))
 
+def calculate_samples_data(path, window):
+    '''Calculates the dataset contents for the input path and window size.
+    Returns the list of available files, the sample groups and the label paths.
+
+    path(str) -- the directory where the dataset is currently stored
+    window(int) -- the window size
+    '''
+
+    files = os.listdir(path)
+    groups, labels = [], []
+    for i in range(len(files) - window * 2):
+        candidates = files[i: i + window] + files[i + window + 1: i + 2 * window + 1]
+        info1, info2 = candidates[0].split('_'), candidates[-1].split('_')
+        if info1[0] == info2[0] and info1[1] == info2[1]:
+            groups += [candidates]
+            labels += [files[i + window]]
+    return files, groups, labels
+
 # ====================
 # auxiliary methods
 # ====================
@@ -49,14 +67,7 @@ def load_core(path, window):
     assert window >= 1      # same here
 
     # load the available frames, group by the requested window size
-    files = os.listdir(path)
-    groups, labels = [], []
-    for i in range(len(files) - window * 2):
-        candidates = files[i: i + window] + files[i + window + 1: i + 2 * window + 1]
-        info1, info2 = candidates[0].split('_'), candidates[-1].split('_')
-        if info1[0] == info2[0] and info1[1] == info2[1]:
-            groups += [candidates]
-            labels += [files[i + window]]
+    files, groups, labels = calculate_samples_data(path, window)
     if VERBOSE_MODE:
         LOG('{} total dataset file(s)'.format(len(files)))
         INFO('{} generated sample(s)'.format(len(groups)))

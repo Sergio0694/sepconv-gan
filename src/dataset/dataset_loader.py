@@ -17,7 +17,7 @@ def load_train(path, size, window):
 
     assert size > 1     # you don't say?
 
-    _, pipeline = load_core(path, window)
+    _, _, pipeline = load_core(path, window)
     return pipeline.batch(size).prefetch(1)
         
 def load_test(path, window):
@@ -30,8 +30,8 @@ def load_test(path, window):
     window(int) -- the window size
     '''
 
-    n, pipeline = load_core(path, window)
-    return pipeline.batch(n)
+    groups, _, pipeline = load_core(path, window)
+    return pipeline.batch(len(groups))
 
 # ====================
 # auxiliary methods
@@ -43,31 +43,23 @@ def load_core(path, window):
 
     assert window >= 1      # same here
 
-    # load the available frames, group by 5
+    # load the available frames, group by the requested window size
     files = os.listdir(path)
     groups, labels = [], []
     for i in range(len(files) - window * 2):
-        groups += [files[i: i + window] + files[i + window + 1: i + 2 * window + 1]]
-        labels += [files[i + window]]
+        candidates = files[i: i + window] + files[i + window + 1: i + 2 * window + 1]
+        info1, info2 = candidates[0].split('_'), candidates[-1].split('_')
+        if info1[0] == info2[0] and info1[1] == info2[1]:
+            groups += [candidates]
+            labels += [files[i + window]]
 
     # create the dataset pipeline
-    return len(groups), \
+    return groups, labels, \
         tf.data.Dataset.from_tensor_slices((groups, labels)) \
         .shuffle(len(groups), reshuffle_each_iteration=True) \
-        .filter(lambda x, y: tf.py_func(tf_ensure_same_video_origin, inp=[x], Tout=[tf.bool])) \
         .map(lambda x, y: tf.py_func(tf_load_images, inp=[x, y, path], Tout=[tf.float32, tf.float32]), num_parallel_calls=cpu_count()) \
         .filter(lambda x, y: tf.py_func(ensure_difference_threshold, inp=[x], Tout=[tf.bool])) \
         .repeat()
-
-def tf_ensure_same_video_origin(paths):
-    '''Ensures the input frames all belong to the same video section.
-    The default frames export format is v{video index}_s{video section}_f{frame number}.{extension}
-
-    paths(list<tf.string) -- a tensor with the input filenames in the current group
-    '''
-    
-    parts1, parts2 = str(paths[0]).split('_'), str(paths[-1]).split('_')
-    return parts1[0] == parts2[0] and parts1[1] == parts2[1]
 
 def tf_load_images(samples, label, directory):
     '''Loads and returns a list of images from the input list of filenames

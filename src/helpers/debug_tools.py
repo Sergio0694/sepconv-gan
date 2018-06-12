@@ -1,4 +1,3 @@
-from functools import reduce
 import numpy as np
 import cv2
 from helpers.logger import LOG, INFO
@@ -18,7 +17,7 @@ def display_image_difference(path1, path2):
         for path in [path1, path2]
     ], dtype=np.float32, copy=False)
 
-    size = reduce(lambda x, y: x * y, list(images.shape))
+    size = np.prod(images[0].shape)
     LOG('{}x{} resolution, {} total size'.format(images[0].shape[0], images[0].shape[1], size))
 
     error = np.sum((images[0] - images[-1]) ** 2, dtype=np.float32) / size

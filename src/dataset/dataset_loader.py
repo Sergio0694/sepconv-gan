@@ -1,22 +1,20 @@
 import os
-from functools import reduce
+from __MACRO__ import *
 from multiprocessing import cpu_count
 import tensorflow as tf
 import numpy as np
 import cv2
 
-def load(path, threshold, size, window):
+def load(path, size, window):
     '''Prepares the input pipeline to train the model. Each batch is made up of 
     n frames [-n, ..., -2, -1, +1, +2, ..., +n] and a ground truth frame 
     as the expected value to be generated from the network.
 
     path(str) -- the directory where the dataset is currently stored
-    threshold(int) -- the maximum threshold to exclude frames with too much change
     size(int) -- the batch size for the data pipeline
     window(int) -- the window size
     '''
 
-    assert threshold > 100
     assert size > 1         # you don't say?
     assert window >= 1      # same here
 
@@ -33,7 +31,7 @@ def load(path, threshold, size, window):
         .shuffle(len(groups)) \
         .filter(lambda x, y: tf.py_func(tf_ensure_same_video_origin, inp=[x], Tout=[tf.bool])) \
         .map(lambda x, y: tf.py_func(tf_load_images, inp=[x, y, path], Tout=[tf.float32, tf.float32]), num_parallel_calls=cpu_count()) \
-        .filter(lambda x, y: tf.py_func(ensure_difference_threshold, inp=[x, threshold], Tout=[tf.bool])) \
+        .filter(lambda x, y: tf.py_func(ensure_difference_threshold, inp=[x], Tout=[tf.bool])) \
         .batch(size) \
         .prefetch(1)
         
@@ -68,13 +66,13 @@ def tf_load_images(samples, label, directory):
 
     return x, y
 
-def ensure_difference_threshold(images, threshold):
-    '''Computes the mean squared error between a pair of images
+def ensure_difference_threshold(images):
+    '''Computes the mean squared error between a series of images
 
-    image1(np.array) -- the first loaded image
-    image2(np.array) -- the second loaded image
+    images(np.array) -- the input images
+    threshold(int) -- the maximum squared difference between the first and last image
     '''
-
-    size = reduce(lambda x, y: x * y, list(images.shape))
+    
+    size = np.prod(images[0].shape)
     error = np.sum((images[0] - images[-1]) ** 2, dtype=np.float32) / size
-    return error < threshold
+    return IMAGE_DIFF_MIN_THRESHOLD < error < IMAGE_DIFF_MAX_THRESHOLD

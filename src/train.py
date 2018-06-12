@@ -1,3 +1,4 @@
+from pathlib import Path
 import cv2
 import tensorflow as tf
 import numpy as np
@@ -5,7 +6,6 @@ from __MACRO__ import *
 import dataset.dataset_loader as data_loader
 from helpers.logger import LOG, INFO
 from networks import deep_motion_cnn
-from pathlib import Path
 
 def run():
 
@@ -33,7 +33,8 @@ def run():
             adam = tf.train.AdamOptimizer().minimize(loss)
 
         # output image
-        uint8_img = tf.image.convert_image_dtype(y * 255.0, tf.uint8, name='yHat')        
+        y_proof = tf.verify_tensor_all_finite(y, 'NaN found :(', 'NaN_check')
+        uint8_img = tf.image.convert_image_dtype(y_proof * 255.0, tf.uint8, name='yHat')        
         
         # summaries
         tf.summary.scalar('TRAIN_loss', loss)
@@ -74,6 +75,11 @@ def run():
                     # save the generated images to track progress
                     predictions_dir = '{}\\_{}'.format(TENSORBOARD_RUN_DIR, i)
                     Path(predictions_dir).mkdir(exist_ok=True)
+                    with open('{}\\yHat[0].txt'.format(predictions_dir), 'w', encoding='utf-8') as test_txt:
+                        opt = np.get_printoptions()
+                        np.set_printoptions(threshold=np.nan)
+                        print(predictions[0], file=test_txt)
+                        np.set_printoptions(opt)
                     for j in range(predictions.shape[0]):
                         cv2.imwrite('{}\\{}_yHat.jpg'.format(predictions_dir, j), predictions[j], [int(cv2.IMWRITE_JPEG_QUALITY), 100])
                         cv2.imwrite('{}\\{}_gt.jpg'.format(predictions_dir, j), ground_truth[j], [int(cv2.IMWRITE_JPEG_QUALITY), 100])

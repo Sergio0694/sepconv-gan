@@ -47,4 +47,7 @@ def get_video_duration(video_path):
         stdout=PIPE,
         stderr=STDOUT)
     output = result.communicate()
-    return int(float(output[0])) # bytes from PIPE > float > round to int
+    try:
+        return int(float(output[0])) # bytes from PIPE > float > round to int
+    except ValueError:
+        return -1

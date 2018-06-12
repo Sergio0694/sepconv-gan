@@ -1,7 +1,12 @@
+# training parameters
+TRAINING_TOTAL_ITERATIONS = 100
+
+# misc
 TRAINING_DATASET_PATH = 'D:\\ML\\th\\datasets\\480p'
 SOURCE_PATH = 'Z:\\TV Series'
 IMAGE_DIFF_MAX_THRESHOLD = 1000
 IMAGE_DIFF_MIN_THRESHOLD = 25
 BATCH_SIZE = 4
 
+# debug
 VERBOSE_MODE = True

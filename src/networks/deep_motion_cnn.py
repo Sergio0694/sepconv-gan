@@ -10,25 +10,23 @@ def get_network(x):
     x(tf.Tensor<tf.float32>) -- the input frames
     '''
 
-    graph = tf.Graph()
-    with graph.as_default():
-
-        # setup the inputs
-        x_shape = tf.shape(x, name='batch_shape')
+    # setup the inputs
+    x_shape = tf.shape(x, name='batch_shape')
+    with tf.name_scope('frames'):
         x_r = tf.reshape(x, [x_shape[0], x_shape[2], x_shape[3], 6], name='frames')
         x_norm = x_r / 255.0
 
-        conv1 = tf.layers.conv2d(x_norm, 32, 3, activation='relu', padding='same')
-        pool1 = tf.layers.max_pooling2d(conv1, 2, 2, padding='same')
-        conv2 = tf.layers.conv2d(pool1, 32, 3, activation='relu', padding='same')
-        pool2 = tf.layers.max_pooling2d(conv2, 2, 2, padding='same')
+    conv1 = tf.layers.conv2d(x_norm, 32, 3, activation=tf.nn.relu, padding='same')
+    pool1 = tf.layers.max_pooling2d(conv1, 2, 2, padding='same')
+    conv2 = tf.layers.conv2d(pool1, 32, 3, activation=tf.nn.relu, padding='same')
+    pool2 = tf.layers.max_pooling2d(conv2, 2, 2, padding='same')
 
-        conv3 = tf.layers.conv2d(pool2, 32, 3, activation='relu', padding='same')
-        conv3_s = tf.shape(conv3)
-        up1 = tf.image.resize_nearest_neighbor(conv3, [conv3_s[1] * 2, conv3_s[2] * 2])
-        conv4 = tf.layers.conv2d(up1, 32, 3, activation='relu', padding='same')
-        conv4_s = tf.shape(conv4)
-        up2 = tf.image.resize_nearest_neighbor(conv4, [conv4_s[1] * 2, conv4_s[2] * 2])
+    conv3 = tf.layers.conv2d(pool2, 32, 3, activation=tf.nn.relu, padding='same')
+    conv3_s = tf.shape(conv3)
+    up1 = tf.image.resize_nearest_neighbor(conv3, [conv3_s[1] * 2, conv3_s[2] * 2])
+    conv4 = tf.layers.conv2d(up1, 32, 3, activation=tf.nn.relu, padding='same')
+    conv4_s = tf.shape(conv4)
+    up2 = tf.image.resize_nearest_neighbor(conv4, [conv4_s[1] * 2, conv4_s[2] * 2])
 
-        y = tf.layers.conv2d(up2, 3, 3, activation='sigmoid', padding='same')
-        return graph, y
+    y = tf.layers.conv2d(up2, 3, 3, activation=tf.nn.sigmoid, padding='same')
+    return y

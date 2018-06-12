@@ -4,6 +4,7 @@ import cv2
 import tensorflow as tf
 import numpy as np
 from __MACRO__ import *
+from helpers.logger import LOG, INFO
 
 def load_train(path, size, window):
     '''Prepares the input pipeline to train the model. Each batch is made up of 
@@ -30,7 +31,12 @@ def load_test(path, window):
     window(int) -- the window size
     '''
 
-    groups, _, pipeline = load_core(path, window)
+    groups, labels, pipeline = load_core(path, window)
+
+    if VERBOSE_MODE:
+        LOG('{} test sample(s)'.format(len(groups)))
+        for s in zip(groups, labels):
+            INFO('{} ---> {}'.format(s[0], s[1]))
     return pipeline.batch(len(groups))
 
 # ====================
@@ -59,7 +65,7 @@ def load_core(path, window):
         .shuffle(len(groups), reshuffle_each_iteration=True) \
         .map(lambda x, y: tf.py_func(tf_load_images, inp=[x, y, path], Tout=[tf.float32, tf.float32]), num_parallel_calls=cpu_count()) \
         .filter(lambda x, y: tf.py_func(ensure_difference_threshold, inp=[x], Tout=[tf.bool])) \
-        .repeat()
+        .repeat
 
 def tf_load_images(samples, label, directory):
     '''Loads and returns a list of images from the input list of filenames

@@ -58,24 +58,27 @@ def run():
             tf.train.Saver().save(session, TENSORBOARD_RUN_DIR) # store the .meta file once
             saver = tf.train.Saver(max_to_keep=MAX_MODELS_TO_KEEP)
             
-            for i in range(TRAINING_TOTAL_ITERATIONS):
-                if i > 0 and i % TENSORBOARD_LOG_INTERVAL == 0:
+            samples, test_step = 0, 0
+            while samples < TRAINING_TOTAL_SAMPLES:
+                if samples // TENSORBOARD_LOG_INTERVAL > test_step:
+                    test_step = samples // TENSORBOARD_LOG_INTERVAL
 
                     # log to tensorboard
                     _, score, summary = session.run([adam, loss, merged_summary])
-                    writer.add_summary(summary, i)
-                    INFO('#{}:\t{}'.format(i, score))
+                    writer.add_summary(summary, samples)
+                    LOG('#{}\t{} sample(s):\t{}'.format(test_step, samples, score))
 
                     # save the model
-                    saver.save(session, TENSORBOARD_RUN_DIR, global_step=i, write_meta_graph=False)
+                    saver.save(session, TENSORBOARD_RUN_DIR, global_step=test_step, write_meta_graph=False)
 
                     # test the model
                     session.run(test_init_op)
-                    predictions, ground_truth = session.run([uint8_img, yHat])
+                    score, predictions, ground_truth = session.run([loss, uint8_img, yHat])
                     session.run(train_init_op)
+                    INFO('{} on test'.format(score))
 
                     # save the generated images to track progress
-                    predictions_dir = '{}\\_{}'.format(TENSORBOARD_RUN_DIR, i)
+                    predictions_dir = '{}\\_{}'.format(TENSORBOARD_RUN_DIR, test_step)
                     Path(predictions_dir).mkdir(exist_ok=True)
                     with open('{}\\yHat[0].txt'.format(predictions_dir), 'w', encoding='utf-8') as test_txt:
                         opt = np.get_printoptions()
@@ -87,3 +90,7 @@ def run():
                         cv2.imwrite('{}\\{}_gt.jpg'.format(predictions_dir, j), ground_truth[j], [int(cv2.IMWRITE_JPEG_QUALITY), 100])
                 else:
                     _ = session.run(adam)
+
+                # training progress
+                samples += BATCH_SIZE          
+

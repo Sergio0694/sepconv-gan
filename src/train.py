@@ -4,7 +4,7 @@ import tensorflow as tf
 import numpy as np
 from __MACRO__ import *
 import dataset.dataset_loader as data_loader
-from helpers.logger import LOG, INFO
+from helpers.logger import LOG, INFO, BAR, RESET_LINE
 from networks import deep_motion_cnn
 
 def run():
@@ -58,7 +58,7 @@ def run():
             tf.train.Saver().save(session, TENSORBOARD_RUN_DIR) # store the .meta file once
             saver = tf.train.Saver(max_to_keep=MAX_MODELS_TO_KEEP)
             
-            samples, test_step = 0, 0
+            samples, test_step, ticks_old = 0, 0, 0
             while samples < TRAINING_TOTAL_SAMPLES:
                 if samples // TENSORBOARD_LOG_INTERVAL > test_step:
                     test_step = samples // TENSORBOARD_LOG_INTERVAL
@@ -66,7 +66,8 @@ def run():
                     # log to tensorboard
                     _, score, summary = session.run([adam, loss, merged_summary])
                     writer.add_summary(summary, samples)
-                    LOG('#{}\t{} sample(s):\t{}'.format(test_step, samples, score))
+                    RESET_LINE()
+                    LOG('#{}\t{}'.format(test_step, samples, score))
 
                     # save the model
                     saver.save(session, TENSORBOARD_RUN_DIR, global_step=test_step, write_meta_graph=False)
@@ -75,7 +76,7 @@ def run():
                     session.run(test_init_op)
                     score, predictions, ground_truth = session.run([loss, uint8_img, yHat])
                     session.run(train_init_op)
-                    INFO('{} on test'.format(score))
+                    INFO('{}'.format(score))
 
                     # save the generated images to track progress
                     predictions_dir = '{}\\_{}'.format(TENSORBOARD_RUN_DIR, test_step)
@@ -92,5 +93,9 @@ def run():
                     _ = session.run(adam)
 
                 # training progress
-                samples += BATCH_SIZE          
-
+                samples += BATCH_SIZE
+                mod = samples % TENSORBOARD_LOG_INTERVAL
+                ticks = (mod * TRAINING_PROGRESS_BAR_LENGTH) // TENSORBOARD_LOG_INTERVAL
+                if ticks != ticks_old:
+                    ticks_old = ticks
+                    BAR(ticks, TRAINING_PROGRESS_BAR_LENGTH)

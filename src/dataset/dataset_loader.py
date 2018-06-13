@@ -5,6 +5,7 @@ import tensorflow as tf
 import numpy as np
 from __MACRO__ import *
 from helpers.logger import LOG, INFO
+from helpers.debug_tools import calculate_image_difference
 
 def load_train(path, size, window):
     '''Prepares the input pipeline to train the model. Each batch is made up of 
@@ -33,9 +34,14 @@ def load_test(path, window):
 
     groups, labels, pipeline = load_core(path, window)
 
-    if VERBOSE_MODE:
+    if SHOW_TEST_SAMPLES_INFO_ON_LOAD:
         for s in zip(groups, labels):
-            INFO('{} ---> {}'.format(s[0], s[1]))
+            seq = s[0][:len(s[0]) // 2] + [s[1]] + s[0][len(s[0]) // 2:]
+            errors = [
+                int(calculate_image_difference('{}\\{}'.format(path, pair[0]), '{}\\{}'.format(path, pair[1]))[2])
+                for pair in zip(seq, seq[1:])
+            ]
+            INFO('{} ---> {}, e={}'.format(s[0], s[1], errors))
     return pipeline.batch(len(groups))
 
 def calculate_samples_data(path, window):

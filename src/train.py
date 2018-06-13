@@ -67,7 +67,7 @@ def run():
                     _, score, summary = session.run([adam, loss, merged_summary])
                     writer.add_summary(summary, samples)
                     RESET_LINE()
-                    LOG('#{}\t{}'.format(test_step, samples, score))
+                    LOG('#{}\t{}'.format(test_step, score))
 
                     # save the model
                     saver.save(session, TENSORBOARD_RUN_DIR, global_step=test_step, write_meta_graph=False)

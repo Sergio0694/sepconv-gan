@@ -19,16 +19,21 @@ def load_train(path, size, window):
 
     assert size > 1     # you don't say?
 
-    _, _, pipeline = load_core(path, window)
-    return pipeline.batch(size).prefetch(1)
+    groups, _, pipeline = load_core(path, window)
+    return pipeline \
+        .shuffle(len(groups), reshuffle_each_iteration=True) \
+        .map(lambda x, y: tf.py_func(tf_load_images, inp=[x, y, path], Tout=[tf.float32, tf.float32]), num_parallel_calls=cpu_count()) \
+        .filter(lambda x, y: tf.py_func(ensure_difference_threshold, inp=[x], Tout=[tf.bool])) \
+        .repeat() \
+        .batch(size) \
+        .prefetch(1)
         
 def load_test(path, window):
-    '''Prepares the input pipeline to test the model. Each batch is made up of 
+    '''Prepares the input pipeline to test the model. Each sample is made up of 
     n frames [-n, ..., -2, -1, +1, +2, ..., +n] and a ground truth frame 
     as the expected value to be generated from the network.
 
     path(str) -- the directory where the dataset is currently stored
-    size(int) -- the batch size for the data pipeline
     window(int) -- the window size
     '''
 
@@ -42,7 +47,11 @@ def load_test(path, window):
                 for pair in zip(seq, seq[1:])
             ]
             INFO('{} ---> {}, e={}'.format(s[0], s[1], errors))
-    return pipeline.batch(len(groups))
+
+    return pipeline \
+        .map(lambda x, y: tf.py_func(tf_load_images, inp=[x, y, path], Tout=[tf.float32, tf.float32]), num_parallel_calls=cpu_count()) \
+        .batch(1) \
+        .prefetch(1) # only process one sample at a time to avoid OOM issues in inference
 
 def calculate_samples_data(path, window):
     '''Calculates the dataset contents for the input path and window size.
@@ -67,8 +76,7 @@ def calculate_samples_data(path, window):
 # ====================
 
 def load_core(path, window):
-    '''Auxiliary method for the load_train and load_test methods
-    '''
+    '''Auxiliary method for the load_train and load_test methods'''
 
     assert window >= 1      # same here
 
@@ -79,12 +87,7 @@ def load_core(path, window):
         INFO('{} generated sample(s)'.format(len(groups)))
 
     # create the dataset pipeline
-    return groups, labels, \
-        tf.data.Dataset.from_tensor_slices((groups, labels)) \
-        .shuffle(len(groups), reshuffle_each_iteration=True) \
-        .map(lambda x, y: tf.py_func(tf_load_images, inp=[x, y, path], Tout=[tf.float32, tf.float32]), num_parallel_calls=cpu_count()) \
-        .filter(lambda x, y: tf.py_func(ensure_difference_threshold, inp=[x], Tout=[tf.bool])) \
-        .repeat()
+    return groups, labels, tf.data.Dataset.from_tensor_slices((groups, labels))
 
 def tf_load_images(samples, label, directory):
     '''Loads and returns a list of images from the input list of filenames

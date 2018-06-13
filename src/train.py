@@ -74,21 +74,21 @@ def run():
 
                     # test the model
                     session.run(test_init_op)
-                    score, predictions, ground_truth = session.run([loss, uint8_img, yHat])
-                    session.run(train_init_op)
-                    INFO('{}'.format(score))
+                    test_score, j = 0, 0
+                    while True:
+                        try:
+                            score, prediction = session.run([loss, uint8_img])
+                            test_score += score
 
-                    # save the generated images to track progress
-                    predictions_dir = '{}\\_{}'.format(TENSORBOARD_RUN_DIR, test_step)
-                    Path(predictions_dir).mkdir(exist_ok=True)
-                    with open('{}\\yHat[0].txt'.format(predictions_dir), 'w', encoding='utf-8') as test_txt:
-                        opt = np.get_printoptions()
-                        np.set_printoptions(threshold=np.nan)
-                        print(predictions[0], file=test_txt)
-                        np.set_printoptions(**opt)
-                    for j in range(predictions.shape[0]):
-                        cv2.imwrite('{}\\{}_yHat.jpg'.format(predictions_dir, j), predictions[j], [int(cv2.IMWRITE_JPEG_QUALITY), 100])
-                        cv2.imwrite('{}\\{}_gt.jpg'.format(predictions_dir, j), ground_truth[j], [int(cv2.IMWRITE_JPEG_QUALITY), 100])
+                            # save the generated images to track progress
+                            predictions_dir = '{}\\_{}'.format(TENSORBOARD_RUN_DIR, test_step)
+                            Path(predictions_dir).mkdir(exist_ok=True)
+                            cv2.imwrite('{}\\{}_yHat.jpg'.format(predictions_dir, j), prediction[0], [int(cv2.IMWRITE_JPEG_QUALITY), 100])
+                            j += 1
+                        except tf.errors.OutOfRangeError:
+                            break
+                    session.run(train_init_op)
+                    INFO('{}'.format(test_score))
                 else:
                     _ = session.run(adam)
 

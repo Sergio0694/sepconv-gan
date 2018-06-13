@@ -1,5 +1,16 @@
 import tensorflow as tf
 
+def stack_images(x):
+    '''Stacks n images over the channels dimension.
+
+    x(tf.tensor<tf.float32>) -- the input [batch, images, h, w, channels] tensor
+    '''
+
+    with tf.name_scope('frames'):
+        x_t = tf.transpose(x, [0, 2, 3, 1, 4])
+        x_shape = tf.shape(x_t, name='batch_shape')
+        return tf.reshape(x_t, [x_shape[0], x_shape[1], x_shape[2], 6], name='frames')
+
 def get_network_v1(x):
     '''Generates a simple CNN to perform image interpolation, based on the FI_CNN_model
     network defined here: https://github.com/neil454/deep-motion/blob/master/src/FI_CNN.py#L6.
@@ -10,13 +21,8 @@ def get_network_v1(x):
     x(tf.Tensor<tf.float32>) -- the input frames
     '''
 
-    # setup the inputs
-    x_shape = tf.shape(x, name='batch_shape')
-    with tf.name_scope('frames'):
-        x_r = tf.reshape(x, [x_shape[0], x_shape[2], x_shape[3], 6], name='frames')
-        x_norm = x_r / 255.0
-
-    conv1 = tf.layers.conv2d(x_norm, 32, 3, activation=tf.nn.relu, padding='same')
+    x_stack = stack_images(x)
+    conv1 = tf.layers.conv2d(x_stack, 32, 3, activation=tf.nn.relu, padding='same')
     pool1 = tf.layers.max_pooling2d(conv1, 2, 2, padding='same')
     conv2 = tf.layers.conv2d(pool1, 32, 3, activation=tf.nn.relu, padding='same')
     pool2 = tf.layers.max_pooling2d(conv2, 2, 2, padding='same')
@@ -32,8 +38,7 @@ def get_network_v1(x):
     return y
 
 def get_network_v2(x):
-    '''Generates a variant of the simple CNN to perform image interpolation, based on the FI_CNN_model
-    network defined here: https://github.com/neil454/deep-motion/blob/master/src/FI_CNN.py#L6.
+    '''Generates a variant of the simple CNN to perform image interpolation.
 
     This network takes a [batch, 2, h, w, 3] input tensor, where each input sample is
     made up of two frames, f-1 and f+1.
@@ -41,13 +46,8 @@ def get_network_v2(x):
     x(tf.Tensor<tf.float32>) -- the input frames
     '''
 
-    # setup the inputs
-    x_shape = tf.shape(x, name='batch_shape')
-    with tf.name_scope('frames'):
-        x_r = tf.reshape(x, [x_shape[0], x_shape[2], x_shape[3], 6], name='frames')
-        x_norm = x_r / 255.0
-
-    conv1_a = tf.layers.conv2d(x_norm, 32, 3, activation=tf.nn.relu, padding='same')
+    x_stack = stack_images(x)
+    conv1_a = tf.layers.conv2d(x_stack, 32, 3, activation=tf.nn.relu, padding='same')
     conv1_b = tf.layers.conv2d(conv1_a, 32, 3, activation=tf.nn.relu, padding='same')
     pool1 = tf.layers.max_pooling2d(conv1_b, 2, 2, padding='same')
 

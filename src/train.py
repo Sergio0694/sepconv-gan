@@ -23,18 +23,18 @@ def run():
 
         # change this line to choose the model to train
         LOG('Creating model')
-        y = deep_motion_cnn.get_network_v2(x)    
+        y = deep_motion_cnn.get_network_v2(x / 255.0) * 255.0
 
         # setup the loss function
         LOG('Loss setup')
         with tf.name_scope('loss'):
-            loss = 0.5 * tf.reduce_sum((y - yHat / 255.0) ** 2)
+            loss = 0.5 * tf.reduce_sum((y - yHat) ** 2)
         with tf.name_scope('adam'):
             adam = tf.train.AdamOptimizer().minimize(loss)
 
         # output image
         y_proof = tf.verify_tensor_all_finite(y, 'NaN found :(', 'NaN_check')
-        uint8_img = tf.image.convert_image_dtype(y_proof * 255.0, tf.uint8, name='yHat')        
+        uint8_img = tf.cast(y_proof, tf.uint8, name='yHat')      
         
         # summaries
         tf.summary.scalar('TRAIN_loss', loss)

@@ -79,7 +79,7 @@ def run():
                         opt = np.get_printoptions()
                         np.set_printoptions(threshold=np.nan)
                         print(predictions[0], file=test_txt)
-                        np.set_printoptions(opt)
+                        np.set_printoptions(**opt)
                     for j in range(predictions.shape[0]):
                         cv2.imwrite('{}\\{}_yHat.jpg'.format(predictions_dir, j), predictions[j], [int(cv2.IMWRITE_JPEG_QUALITY), 100])
                         cv2.imwrite('{}\\{}_gt.jpg'.format(predictions_dir, j), ground_truth[j], [int(cv2.IMWRITE_JPEG_QUALITY), 100])

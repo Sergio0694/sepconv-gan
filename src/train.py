@@ -54,6 +54,7 @@ def run():
             # initialization
             session.run(train_init_op)
             session.run(tf.global_variables_initializer())
+            tf.train.Saver().save(session, TENSORBOARD_RUN_DIR) # store the .meta file once
             saver = tf.train.Saver(max_to_keep=MAX_MODELS_TO_KEEP)
             
             for i in range(TRAINING_TOTAL_ITERATIONS):
@@ -65,7 +66,7 @@ def run():
                     INFO('#{}:\t{}'.format(i, score))
 
                     # save the model
-                    saver.save(session, TENSORBOARD_RUN_DIR, global_step=i, write_meta_graph=i == TENSORBOARD_LOG_INTERVAL)
+                    saver.save(session, TENSORBOARD_RUN_DIR, global_step=i, write_meta_graph=False)
 
                     # test the model
                     session.run(test_init_op)

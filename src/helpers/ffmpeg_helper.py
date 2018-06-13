@@ -15,7 +15,7 @@ def extract_frames(video_path, output_folder, x, y=-1, start=0, duration=60, suf
     '''
     
     assert start > 0
-    assert duration > 1 # really?
+    assert duration >= 1 # really?
 
     Path(output_folder).mkdir(exist_ok=True)
     try:

@@ -31,7 +31,7 @@ def run():
             loss = 0.5 * tf.reduce_sum((y - yHat) ** 2)
         with tf.control_dependencies(tf.get_collection(tf.GraphKeys.UPDATE_OPS)):
             with tf.name_scope('adam'):
-                eta = tf.placeholder(tf.float32, [])
+                eta = tf.placeholder(tf.float32)
                 adam = tf.train.AdamOptimizer(eta).minimize(loss)
 
         # output image
@@ -40,6 +40,8 @@ def run():
         
         # summaries
         tf.summary.scalar('TRAIN_loss', loss)
+        test_loss = tf.placeholder(tf.float32, name='test_loss')
+        tf.summary.scalar('TEST_loss', test_loss, ['_'])
         merged_summary = tf.summary.merge_all()
 
         # model info (while inside the graph)
@@ -95,6 +97,11 @@ def run():
                             j += 1
                         except tf.errors.OutOfRangeError:
                             break
+                    
+                    # log the test loss and restore the pipeline
+                    test_summary_tensor = graph.get_tensor_by_name('TEST_loss:0')
+                    test_summary = session.run(test_summary_tensor, feed_dict={test_loss: test_score})
+                    writer.add_summary(test_summary, samples)
                     session.run(train_init_op)
                     INFO('{}'.format(test_score))
                 else:

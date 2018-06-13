@@ -85,59 +85,55 @@ def get_network_v3(x):
     norm_x = tf.layers.batch_normalization(x_stack)
 
     # [batch, h, w, 3 * images]
-    with tf.name_scope('stem_a'):
-        conv1_a = tf.layers.conv2d(norm_x, 32, 3, activation=tf.nn.relu, padding='same')
-        conv1_b = tf.layers.conv2d(conv1_a, 32, 3, activation=tf.nn.relu, padding='same')
-        conv1_c = tf.layers.conv2d(conv1_b, 32, 3, activation=tf.nn.relu, padding='same')
-        conv1_d = tf.layers.conv2d(conv1_c, 32, 2, 2, activation=tf.nn.relu, padding='same')
-        pool1 = tf.layers.max_pooling2d(conv1_c, 2, 2, padding='same')
-        stack1 = tf.concat([conv1_d, pool1], 3)
-        norm1 = tf.layers.batch_normalization(stack1)
+    conv1_a = tf.layers.conv2d(norm_x, 32, 3, activation=tf.nn.relu, padding='same')
+    conv1_b = tf.layers.conv2d(conv1_a, 32, 3, activation=tf.nn.relu, padding='same')
+    conv1_c = tf.layers.conv2d(conv1_b, 32, 3, activation=tf.nn.relu, padding='same')
+    norm1_a = tf.layers.batch_normalization(conv1_c)
+    conv1_d = tf.layers.conv2d(norm1_a, 32, 2, 2, activation=tf.nn.relu, padding='same')
+    pool1 = tf.layers.max_pooling2d(norm1_a, 2, 2, padding='same')
+    stack1 = tf.concat([conv1_d, pool1], 3)
+    norm1_b = tf.layers.batch_normalization(stack1)
 
     # [batch, h / 2, w / 2, 64]
-    with tf.name_scope('stem_b'):
-        conv2_b1_a = tf.layers.conv2d(norm1, 64, 1, activation=tf.nn.relu)
-        conv2_b1_b = tf.layers.conv2d(conv2_b1_a, 64, 3, activation=tf.nn.relu, padding='same')
-        conv2_b1_c = tf.layers.conv2d(conv2_b1_b, 46, 1, activation=tf.nn.relu)
-        conv2_b2_a = tf.layers.conv2d(norm1, 64, 1, activation=tf.nn.relu)
-        conv2_b2_b = tf.layers.conv2d(conv2_b2_a, 64, [7, 1], activation=tf.nn.relu, padding='same')
-        conv2_b2_c = tf.layers.conv2d(conv2_b2_b, 64, [1, 7], activation=tf.nn.relu, padding='same')
-        conv2_b2_d = tf.layers.conv2d(conv2_b2_c, 46, 3, activation=tf.nn.relu, padding='same')
-        stack2 = tf.concat([conv2_b1_c, conv2_b2_d], 3)
-        norm2 = tf.layers.batch_normalization(stack2)
+    conv2_b1_a = tf.layers.conv2d(norm1_b, 64, 1, activation=tf.nn.relu)
+    conv2_b1_b = tf.layers.conv2d(conv2_b1_a, 64, 3, activation=tf.nn.relu, padding='same')
+    conv2_b1_c = tf.layers.conv2d(conv2_b1_b, 46, 1, activation=tf.nn.relu)
+    conv2_b2_a = tf.layers.conv2d(norm1_b, 64, 1, activation=tf.nn.relu)
+    conv2_b2_b = tf.layers.conv2d(conv2_b2_a, 64, [7, 1], activation=tf.nn.relu, padding='same')
+    conv2_b2_c = tf.layers.conv2d(conv2_b2_b, 64, [1, 7], activation=tf.nn.relu, padding='same')
+    conv2_b2_d = tf.layers.conv2d(conv2_b2_c, 46, 3, activation=tf.nn.relu, padding='same')
+    stack2 = tf.concat([conv2_b1_c, conv2_b2_d], 3)
+    norm2 = tf.layers.batch_normalization(stack2)
 
     # [batch, h / 2, w / 2, 92]
-    with tf.name_scope('stem_c'):
-        conv3_b1 = tf.layers.conv2d(norm2, 128, 3, 2, activation=tf.nn.relu, padding='same')
-        pool2 = tf.layers.max_pooling2d(norm2, 2, 2, padding='same')
-        conv3_b2 = tf.layers.conv2d(pool2, 32, 1, activation=tf.nn.relu)
-        stack3 = tf.concat([conv3_b1, conv3_b2], 3)
-        norm3 = tf.layers.batch_normalization(stack3)
+    conv3_b1 = tf.layers.conv2d(norm2, 128, 3, 2, activation=tf.nn.relu, padding='same')
+    pool3 = tf.layers.max_pooling2d(norm2, 2, 2, padding='same')
+    conv3_b2 = tf.layers.conv2d(pool3, 32, 1, activation=tf.nn.relu)
+    stack3 = tf.concat([conv3_b1, conv3_b2], 3)
+    norm3 = tf.layers.batch_normalization(stack3)
 
     # [batch, h / 4, w / 4, 160]
-    with tf.name_scope('conv_a'):
-        conv4_a = tf.layers.conv2d(norm3, 192, 3, activation=tf.nn.relu, padding='same')
-        norm4_a = tf.layers.batch_normalization(conv4_a)
-        conv4_b = tf.layers.conv2d(norm4_a, 192, 3, activation=tf.nn.relu, padding='same') + norm4_a
-        norm4_b = tf.layers.batch_normalization(conv4_b)
+    conv4_a = tf.layers.conv2d(norm3, 192, 3, activation=tf.nn.relu, padding='same')
+    norm4_a = tf.layers.batch_normalization(conv4_a)
+    conv4_b = tf.layers.conv2d(norm4_a, 192, 3, activation=tf.nn.relu, padding='same') + norm4_a
+    norm4_b = tf.layers.batch_normalization(conv4_b)
 
     # [batch, h / 4, w / 4, 192] >> (h / 2, w / 2)
-    with tf.name_scope('deconv_a'):
-        up1_s = tf.shape(conv3_b1)
-        up1 = tf.image.resize_nearest_neighbor(norm4_b, [up1_s[1], up1_s[2]])
-        conv5_a = tf.layers.conv2d(up1, 64, 3, activation=tf.nn.relu, padding='same')
-        norm5_a = tf.layers.batch_normalization(conv5_a)
-        conv5_b = tf.layers.conv2d(norm5_a, 64, 3, activation=tf.nn.relu, padding='same')
-        norm5_b = tf.layers.batch_normalization(conv5_b)
+    up1_s = tf.shape(norm2)
+    up1 = tf.image.resize_nearest_neighbor(norm4_b, [up1_s[1], up1_s[2]])
+    norm2_res = tf.layers.conv2d(norm2, 64, 1, activation=tf.nn.relu)
+    conv5_a = tf.layers.conv2d(up1, 64, 3, activation=tf.nn.relu, padding='same') + norm2_res
+    norm5_a = tf.layers.batch_normalization(conv5_a)
+    conv5_b = tf.layers.conv2d(norm5_a, 64, 3, activation=tf.nn.relu, padding='same')
+    norm5_b = tf.layers.batch_normalization(conv5_b)
 
     # [batch, h / 2, w / 2, 64] >> (h, w)
-    with tf.name_scope('deconv_b'):
-        up2_s = tf.shape(x_stack)
-        up2 = tf.image.resize_nearest_neighbor(norm5_b, [up2_s[1], up2_s[2]])
-        conv6_a = tf.layers.conv2d(up2, 32, 3, activation=tf.nn.relu, padding='same')
-        norm6_a = tf.layers.batch_normalization(conv6_a)
-        conv6_b = tf.layers.conv2d(norm6_a, 32, 3, activation=tf.nn.relu, padding='same')
-        conv6_c = tf.layers.conv2d(conv6_b, 32, 3, activation=tf.nn.relu, padding='same')
+    up2_s = tf.shape(x_stack)
+    up2 = tf.image.resize_nearest_neighbor(norm5_b, [up2_s[1], up2_s[2]])
+    conv6_a = tf.layers.conv2d(up2, 32, 3, activation=tf.nn.relu, padding='same') + norm1_a
+    norm6_a = tf.layers.batch_normalization(conv6_a)
+    conv6_b = tf.layers.conv2d(norm6_a, 32, 3, activation=tf.nn.relu, padding='same')
+    conv6_c = tf.layers.conv2d(conv6_b, 32, 3, activation=tf.nn.relu, padding='same')
 
     y = tf.layers.conv2d(conv6_c, 3, 5, activation=tf.nn.sigmoid, padding='same')
     return y

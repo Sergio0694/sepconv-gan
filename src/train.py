@@ -31,7 +31,8 @@ def run():
             loss = 0.5 * tf.reduce_sum((y - yHat) ** 2)
         with tf.control_dependencies(tf.get_collection(tf.GraphKeys.UPDATE_OPS)):
             with tf.name_scope('adam'):
-                adam = tf.train.AdamOptimizer().minimize(loss)
+                eta = tf.placeholder(tf.float32, [])
+                adam = tf.train.AdamOptimizer(eta).minimize(loss)
 
         # output image
         y_proof = tf.verify_tensor_all_finite(y, 'NaN found :(', 'NaN_check')
@@ -57,20 +58,27 @@ def run():
             session.run(tf.global_variables_initializer())
             tf.train.Saver().save(session, TENSORBOARD_RUN_DIR) # store the .meta file once
             saver = tf.train.Saver(max_to_keep=MAX_MODELS_TO_KEEP)
-            
-            samples, test_step, ticks_old = 0, 0, 0
+            rates = {
+                0: 0.00005,
+                1: 0.0001,
+                2: 0.0002,
+                3: 0.0005
+            } # to avoid issues with the first iterations exploding
+            samples, step, ticks_old = 0, 0, 0
+
             while samples < TRAINING_TOTAL_SAMPLES:
-                if samples // TENSORBOARD_LOG_INTERVAL > test_step:
-                    test_step = samples // TENSORBOARD_LOG_INTERVAL
+                lr = rates.get(step, 0.001)
+                if samples // TENSORBOARD_LOG_INTERVAL > step:
+                    step = samples // TENSORBOARD_LOG_INTERVAL
 
                     # log to tensorboard
-                    _, score, summary = session.run([adam, loss, merged_summary])
+                    _, score, summary = session.run([adam, loss, merged_summary], feed_dict={eta: lr})
                     writer.add_summary(summary, samples)
                     RESET_LINE()
-                    LOG('#{}\t{}'.format(test_step, score))
+                    LOG('#{}\t{}'.format(step, score))
 
                     # save the model
-                    saver.save(session, TENSORBOARD_RUN_DIR, global_step=test_step, write_meta_graph=False)
+                    saver.save(session, TENSORBOARD_RUN_DIR, global_step=step, write_meta_graph=False)
 
                     # test the model
                     session.run(test_init_op)
@@ -81,7 +89,7 @@ def run():
                             test_score += score
 
                             # save the generated images to track progress
-                            predictions_dir = '{}\\_{}'.format(TENSORBOARD_RUN_DIR, test_step)
+                            predictions_dir = '{}\\_{}'.format(TENSORBOARD_RUN_DIR, step)
                             Path(predictions_dir).mkdir(exist_ok=True)
                             cv2.imwrite('{}\\{}_yHat.jpg'.format(predictions_dir, j), prediction[0], [int(cv2.IMWRITE_JPEG_QUALITY), 100])
                             j += 1
@@ -90,7 +98,7 @@ def run():
                     session.run(train_init_op)
                     INFO('{}'.format(test_score))
                 else:
-                    _ = session.run(adam)
+                    _ = session.run(adam, feed_dict={eta: lr})
 
                 # training progress
                 samples += BATCH_SIZE

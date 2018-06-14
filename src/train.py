@@ -21,27 +21,27 @@ with graph.as_default():
     train_dataset = data_loader.load_train(TRAINING_DATASET_PATH, BATCH_SIZE, 1)
     test_dataset = data_loader.load_test(TEST_DATASET_PATH, 1)
     iterator = tf.data.Iterator.from_structure(train_dataset.output_types, train_dataset.output_shapes)
-    x_train, yHat = iterator.get_next()
+    x_train, y = iterator.get_next()
     train_init_op = iterator.make_initializer(train_dataset)
     test_init_op = iterator.make_initializer(test_dataset)
 
     # change this line to choose the model to train
     LOG('Creating model')
     x = tf.placeholder_with_default(x_train, [None, None, None, None, 3] name='x')
-    y = deep_motion_cnn.get_network_v3(x / 255.0) * 255.0
+    yHat = deep_motion_cnn.get_network_v3(x / 255.0) * 255.0
 
     # setup the loss function
     LOG('Loss setup')
     with tf.name_scope('loss'):
-        loss = 0.5 * tf.reduce_sum((y - yHat) ** 2)
+        loss = 0.5 * tf.reduce_sum((yHat - y) ** 2)
     with tf.control_dependencies(tf.get_collection(tf.GraphKeys.UPDATE_OPS)):
         with tf.name_scope('adam'):
             eta = tf.placeholder(tf.float32)
             adam = tf.train.AdamOptimizer(eta).minimize(loss)
 
     # output image
-    y_proof = tf.verify_tensor_all_finite(y, 'NaN found :(', 'NaN_check')
-    uint8_img = tf.cast(y_proof, tf.uint8, name='yHat')      
+    yHat_proof = tf.verify_tensor_all_finite(yHat, 'NaN found :(', 'NaN_check')
+    uint8_img = tf.cast(yHat_proof, tf.uint8, name='uint8_img')      
     
     # summaries
     tf.summary.scalar('TRAIN_loss', loss)

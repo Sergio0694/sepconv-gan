@@ -20,10 +20,12 @@ with graph.as_default():
     LOG('Creating datasets')
     train_dataset = data_loader.load_train(TRAINING_DATASET_PATH, BATCH_SIZE, 1)
     test_dataset = data_loader.load_test(TEST_DATASET_PATH, 1)
+    inference_groups, inference_dataset = data_loader.load_inference()
     iterator = tf.data.Iterator.from_structure(train_dataset.output_types, train_dataset.output_shapes)
     x, yHat, yName = iterator.get_next()
     train_init_op = iterator.make_initializer(train_dataset)
     test_init_op = iterator.make_initializer(test_dataset)
+    iterator.make_initializer(inference_dataset, name='inference_dataset_init_op') # for later use
 
     # change this line to choose the model to train
     LOG('Creating model')

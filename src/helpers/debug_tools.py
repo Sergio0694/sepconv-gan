@@ -31,5 +31,5 @@ def display_image_difference(path1, path2):
     INFO(path2)
     resolution, size, error = calculate_image_difference(path1, path2)
 
-    LOG('{}x{} resolution, {} total size'.format(resolution.shape[0], resolution.shape[1], size))
+    LOG('{}x{} resolution, {} total size'.format(resolution[0], resolution[1], size))
     LOG('Mean squared difference: {}'.format(error))

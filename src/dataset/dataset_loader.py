@@ -22,8 +22,8 @@ def load_train(path, size, window):
     groups, _, pipeline = load_core(path, window)
     return pipeline \
         .shuffle(len(groups), reshuffle_each_iteration=True) \
-        .map(lambda x, y: tf.py_func(tf_load_images, inp=[x, y, path], Tout=[tf.float32, tf.float32]), num_parallel_calls=cpu_count()) \
-        .filter(lambda x, y: tf.py_func(ensure_difference_threshold, inp=[x], Tout=[tf.bool])) \
+        .map(lambda x, y: tf.py_func(tf_load_images, inp=[x, y, path], Tout=[tf.float32, tf.float32, tf.string]), num_parallel_calls=cpu_count()) \
+        .filter(lambda x, y, z: tf.py_func(ensure_difference_threshold, inp=[x], Tout=[tf.bool])) \
         .repeat() \
         .batch(size) \
         .prefetch(1)
@@ -49,7 +49,7 @@ def load_test(path, window):
             INFO('{} ---> {}, e={}'.format(s[0], s[1], errors))
 
     return pipeline \
-        .map(lambda x, y: tf.py_func(tf_load_images, inp=[x, y, path], Tout=[tf.float32, tf.float32]), num_parallel_calls=cpu_count()) \
+        .map(lambda x, y: tf.py_func(tf_load_images, inp=[x, y, path], Tout=[tf.float32, tf.float32, tf.string]), num_parallel_calls=cpu_count()) \
         .batch(1) \
         .prefetch(1) # only process one sample at a time to avoid OOM issues in inference
 
@@ -103,7 +103,7 @@ def tf_load_images(samples, label, directory):
     ], dtype=np.float32, copy=False)
     y = cv2.imread('{}\\{}'.format(str(directory)[2:-1], str(label)[2:-1])).astype(np.float32)
 
-    return x, y
+    return x, y, samples[len(samples) // 2 - 1]
 
 def ensure_difference_threshold(images):
     '''Computes the mean squared error between a series of images

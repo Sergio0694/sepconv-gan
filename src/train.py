@@ -21,7 +21,7 @@ with graph.as_default():
     train_dataset = data_loader.load_train(TRAINING_DATASET_PATH, BATCH_SIZE, 1)
     test_dataset = data_loader.load_test(TEST_DATASET_PATH, 1)
     iterator = tf.data.Iterator.from_structure(train_dataset.output_types, train_dataset.output_shapes)
-    x, yHat = iterator.get_next()
+    x, yHat, yName = iterator.get_next()
     train_init_op = iterator.make_initializer(train_dataset)
     test_init_op = iterator.make_initializer(test_dataset)
 

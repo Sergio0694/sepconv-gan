@@ -1,5 +1,6 @@
 import os
 from multiprocessing import cpu_count
+import re
 import cv2
 import tensorflow as tf
 import numpy as np
@@ -61,6 +62,7 @@ def load_inference_samples(path, window):
     '''
 
     files = os.listdir(path)
+    files.sort(key=lambda name: int(re.findall('([0-9]+)[.]', name)[0]))
     return [
         files[i:i + window * 2]
         for i in range(len(files) - window)

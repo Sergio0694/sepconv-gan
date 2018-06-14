@@ -1,5 +1,4 @@
 from os import listdir
-from pathlib import Path
 from time import time
 import cv2
 import tensorflow as tf
@@ -10,13 +9,13 @@ from helpers.logger import LOG, INFO, BAR, RESET_LINE
 
 MODEL_ROOT_PATH = r'D:\ML\th\trained_models\simple_cnn_v3_520.000'
 PROGRESS_BAR_LENGTH = 20
-SOURCE_PATH = 'D:\\ML\\th\\datasets\\test_1080'
-OUTPUT_PATH = 'D:\\ML\\th\\datasets\\inference_1080'
+WORKING_PATH = 'D:\\ML\\th\\datasets\\test_1080'
 
 # load the inference raw data
 LOG('Preparing samples')
-_, groups, _ = data_loader.calculate_samples_data(SOURCE_PATH, 1)
+_, groups, _ = data_loader.calculate_samples_data(WORKING_PATH, 1)
 previous_idx = len(groups[0]) // 2 - 1
+extension = groups[0][0][-4:] # same image format as the input
 INFO('{} sample(s) to process'.format(len(groups)))
 
 # restore the model
@@ -36,21 +35,20 @@ with tf.Session() as session:
     # process the data
     LOG('Processing items')
     BAR(0, PROGRESS_BAR_LENGTH)
-    Path(OUTPUT_PATH).mkdir(exist_ok=True)
     steps = 0
     start_seconds = time()
     for i, group in enumerate(groups):
 
         # load the current sample
         frames = np.array([[
-            cv2.imread('{}\\{}'.format(SOURCE_PATH, sample)).astype(np.float32)
+            cv2.imread('{}\\{}'.format(WORKING_PATH, sample)).astype(np.float32)
             for sample in group
         ]], dtype=np.float32, copy=False)
-        filename = group[previous_idx]
+        filename = group[previous_idx][:-4]
 
         # inference
         prediction = session.run(yHat, feed_dict={x: frames})
-        cv2.imwrite('{}\\{}_.jpg'.format(OUTPUT_PATH, filename), prediction[0], [int(cv2.IMWRITE_JPEG_QUALITY), 100])
+        cv2.imwrite('{}\\{}_{}'.format(WORKING_PATH, filename, extension), prediction[0], [int(cv2.IMWRITE_JPEG_QUALITY), 100])
 
         # update the UI
         progress = (i * PROGRESS_BAR_LENGTH) // len(groups)

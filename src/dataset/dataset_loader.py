@@ -22,7 +22,7 @@ def load_train(path, size, window):
     groups, _, pipeline = load_core(path, window)
     return pipeline \
         .shuffle(len(groups), reshuffle_each_iteration=True) \
-        .map(lambda x, y: tf.py_func(tf_load_images, inp=[x, y, path], Tout=[tf.float32, tf.float32, tf.string]), num_parallel_calls=cpu_count()) \
+        .map(lambda x, y: tf.py_func(tf_load_images, inp=[x, y, path], Tout=[tf.float32, tf.float32]), num_parallel_calls=cpu_count()) \
         .filter(lambda x, y, z: tf.py_func(ensure_difference_threshold, inp=[x], Tout=[tf.bool])) \
         .repeat() \
         .batch(size) \
@@ -49,21 +49,9 @@ def load_test(path, window):
             INFO('{} ---> {}, e={}'.format(s[0], s[1], errors))
 
     return pipeline \
-        .map(lambda x, y: tf.py_func(tf_load_images, inp=[x, y, path], Tout=[tf.float32, tf.float32, tf.string]), num_parallel_calls=cpu_count()) \
+        .map(lambda x, y: tf.py_func(tf_load_images, inp=[x, y, path], Tout=[tf.float32, tf.float32]), num_parallel_calls=cpu_count()) \
         .batch(1) \
         .prefetch(1) # only process one sample at a time to avoid OOM issues in inference
-
-def load_inference():
-    '''Prepares an initializable inference iterator and returns a placeholder that will be used
-    to initialize it, and the inference pipeline.
-    '''
-
-    groups = tf.placeholder(tf.string, [None, None], name='inference_groups')
-    return groups, \
-        tf.data.Dataset.from_tensor_slices(groups) \
-        .map(lambda x: tf.py_func(tf_load_images_inference, inp=[x], Tout=[tf.float32, tf.float32, tf.string]), num_parallel_calls=cpu_count()) \
-        .batch(1) \
-        .prefetch(1)
 
 def calculate_samples_data(path, window):
     '''Calculates the dataset contents for the input path and window size.
@@ -115,22 +103,7 @@ def tf_load_images(samples, label, directory):
     ], dtype=np.float32, copy=False)
     y = cv2.imread('{}\\{}'.format(str(directory)[2:-1], str(label)[2:-1])).astype(np.float32)
 
-    return x, y, samples[len(samples) // 2 - 1]
-
-def tf_load_images_inference(samples):
-    '''Loads and returns a list of images from the input list of filenames. Note that the
-    expected output is just a dummy array in this case, since it's not needed in inference.
-    
-    samples(list<tf.string>) -- a tensor with the list of filenames to load
-    '''
-    
-    x = np.array([
-        cv2.imread(str(sample)[2:-1]).astype(np.float32)
-        for sample in samples
-    ], dtype=np.float32, copy=False)
-    y = np.zeros(0, np.float32)
-
-    return x, y, samples[len(samples) // 2 - 1]
+    return x, y
 
 def ensure_difference_threshold(images):
     '''Computes the mean squared error between a series of images

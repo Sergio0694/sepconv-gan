@@ -53,6 +53,23 @@ def load_test(path, window):
         .batch(1) \
         .prefetch(1) # only process one sample at a time to avoid OOM issues in inference
 
+def load_inference_samples(path, window):
+    '''Loads the inference samples from the input path.
+
+    path(str) -- the directory where the dataset is currently stored
+    window(int) -- the window size
+    '''
+
+    files = os.listdir(path)
+    return [
+        [files[i:i + window * 2 - 1]]
+        for i in range(len(files) - window)
+    ]
+
+# ====================
+# auxiliary methods
+# ====================
+
 def calculate_samples_data(path, window):
     '''Calculates the dataset contents for the input path and window size.
     Returns the list of available files, the sample groups and the label paths.
@@ -70,10 +87,6 @@ def calculate_samples_data(path, window):
             groups += [candidates]
             labels += [files[i + window]]
     return files, groups, labels
-
-# ====================
-# auxiliary methods
-# ====================
 
 def load_core(path, window):
     '''Auxiliary method for the load_train and load_test methods'''

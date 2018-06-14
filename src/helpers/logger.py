@@ -21,22 +21,28 @@ def INFO(text):
     print('{} >>'.format(Fore.LIGHTCYAN_EX), end=' ')
     print(text, flush=True)
 
-def BAR(x, y):
+def BAR(x, y, info=''):
     '''Displays a simple progress bar with
 
     x(int) -- the number of completed steps
     y(int) -- the total number of steps to perform
+    int(str) -- additional info to print after the progress bar (optional)
     '''
 
     assert x >= 0 and x <= y
 
     if x < y:
-        print('\r{}[{}{}]'.format(Fore.LIGHTYELLOW_EX, '=' * x, ' ' * (y - x)), end='', flush=True)
+        print('\r{}[{}{}]{}{}'.format(Fore.LIGHTYELLOW_EX, '=' * x, ' ' * (y - x), Fore.WHITE, info), end='', flush=True)
     else:
         print('', end='\r', flush=True) # reset the current line
 
-def RESET_LINE():
+def RESET_LINE(clean=False):
     '''Resets the current line by writing a carriage return character
+
+    clean(bool) -- indicates whether or not to overwrite the current line to clean it up
     '''
 
-    print('', end='\r', flush=True)
+    if clean:
+        print('\r{}\r'.format(' ' * 50), end='', flush=True)
+    else:
+        print('\r', end='', flush=True)

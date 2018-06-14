@@ -28,7 +28,6 @@ with tf.Session() as session:
 
     # initialization
     LOG('Initialization')
-    session.run(tf.global_variables_initializer())
     x = graph.get_tensor_by_name('x:0')
     yHat = graph.get_tensor_by_name('uint8_img:0')
 

@@ -117,10 +117,12 @@ def get_network_v3(x):
     norm4_a = tf.layers.batch_normalization(conv4_a)
     conv4_b = tf.layers.conv2d(norm4_a, 192, 3, activation=tf.nn.relu, padding='same') + norm4_a
     norm4_b = tf.layers.batch_normalization(conv4_b)
+    conv4_c = tf.layers.conv2d(norm4_b, 192, 3, activation=tf.nn.relu, padding='same') + norm4_b
+    norm4_c = tf.layers.batch_normalization(conv4_c)
 
     # [batch, h / 4, w / 4, 192] >> (h / 2, w / 2)
     up1_s = tf.shape(norm2)
-    up1 = tf.image.resize_nearest_neighbor(norm4_b, [up1_s[1], up1_s[2]])
+    up1 = tf.image.resize_nearest_neighbor(norm4_c, [up1_s[1], up1_s[2]])
     norm2_res = tf.layers.conv2d(norm2, 64, 1, activation=tf.nn.relu)
     conv5_a = tf.layers.conv2d(up1, 64, 3, activation=tf.nn.relu, padding='same') + norm2_res
     norm5_a = tf.layers.batch_normalization(conv5_a)

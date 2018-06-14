@@ -3,7 +3,7 @@ from pathlib import Path
 from subprocess import call, Popen, PIPE, STDOUT, TimeoutExpired
 
 def extract_all_frames(video_path, x=-1, extension='jpg'):
-    '''Extracts all the frames from the input video
+    '''Extracts all the frames from the input video.
     
     video_path(str) -- the path to the input video to process
     x(int) -- the desired horizontal resolution of the exported frames
@@ -12,7 +12,9 @@ def extract_all_frames(video_path, x=-1, extension='jpg'):
 
     assert x >= 480 or x == -1 # minimum resolution
 
+    # setup
     output_folder = '{}\\{}_'.format(dirname(video_path), basename(video_path).split('.')[0])
+    frames_formatted_path = '{}\\f%03d.{}'.format(output_folder, extension)
     Path(output_folder).mkdir(exist_ok=True)
     args = [
         'ffmpeg',
@@ -22,12 +24,17 @@ def extract_all_frames(video_path, x=-1, extension='jpg'):
         '-qmax', '1',
         '-pix_fmt', 'rgb24',
         '-v', 'quiet',
-        '{}\\f%03d.{}'.format(output_folder, extension)
+        frames_formatted_path
     ]
+
+    # optional rescaling
     if x != -1:
         args.insert(2, '-vf')
         args.insert(3, 'scale={}:-1'.format(x))
+
+    # process and return the output folder path
     call(args)
+    return output_folder, frames_formatted_path
 
 def extract_frames(video_path, output_folder, x, y=-1, start=0, duration=60, suffix='', extension='jpg'):
     '''Exports a series of frames from the input video to the specified folder.
@@ -65,7 +72,7 @@ def extract_frames(video_path, output_folder, x, y=-1, start=0, duration=60, suf
         return False
 
 def get_video_duration(video_path):
-    '''Returns the duration of the video specified by the given path, in seconds
+    '''Returns the duration of the video specified by the given path, in seconds.
     
     video_path(str) -- the path of the video to analyze
     '''
@@ -79,3 +86,31 @@ def get_video_duration(video_path):
         return int(float(output[0])) # bytes from PIPE > float > round to int
     except ValueError:
         return -1
+
+def create_video(frames_path, original_path):
+    '''Creates an interpolated video from the input frames.
+
+    frames_path(str) -- the formatted path of the folder with the source frames (returned by extract_all_frames)
+    extension(str) -- the extension of the source frames
+    original_path(str) -- the path of the oririginal video
+    '''
+
+    output_path = '{}_resampled.mp4'.format(original_path[:-4])
+    call([
+        'ffmpeg',
+        '-loglevel', 'fatal',
+        '-y',
+        '-framerate', '48000/1001',
+        '-start_number', '1',
+        '-i', frames_path,
+        '-i', original_path,
+        '-c:v', 'libx265',
+        '-crf', '17',
+        '-r', '48000/1001',
+        '-pix_fmt', 'yuv420p',
+        '-c:a', 'copy',
+        '-strict', 'experimental',
+        '-shortest',
+        output_path
+    ])
+    return output_path

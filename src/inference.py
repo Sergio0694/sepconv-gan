@@ -6,7 +6,7 @@ from __MACRO__ import *
 import dataset.dataset_loader as data_loader
 from helpers.logger import LOG, INFO, BAR, RESET_LINE
 
-MODEL_ROOT_PATH = 'D:\\ML\\th\\trained_models\\v3_test'
+MODEL_ROOT_PATH = 'D:\\ML\\th\\trained_models\\simple_cnn_v3'
 META_FILE_PATH = '{}\\{}'.format(MODEL_ROOT_PATH, 'simple_cnn_v3.meta')
 PROGRESS_BAR_LENGTH = 20
 SOURCE_PATH = 'D:\\ML\\th\\datasets\\test_1080'
@@ -15,7 +15,7 @@ OUTPUT_PATH = 'D:\\ML\\th\\datasets\\inference_1080'
 # load the inference raw data
 LOG('Preparing samples')
 _, groups, _ = data_loader.calculate_samples_data(SOURCE_PATH, 1)
-previous_idx = len(groups) // 2 - 1
+previous_idx = len(groups[0]) // 2 - 1
 INFO('{} sample(s) to process'.format(len(groups)))
 
 # restore the model
@@ -39,10 +39,10 @@ with tf.Session() as session:
     for i, group in enumerate(groups):
 
         # load the current sample
-        frames = np.array([
+        frames = np.array([[
             cv2.imread('{}\\{}'.format(SOURCE_PATH, sample)).astype(np.float32)
             for sample in group
-        ], dtype=np.float32, copy=False)
+        ]], dtype=np.float32, copy=False)
         filename = group[previous_idx]
 
         # inference
@@ -53,6 +53,6 @@ with tf.Session() as session:
         progress = (i * PROGRESS_BAR_LENGTH) // len(groups)
         if progress > steps:
             steps = progress
-            BAR(step, PROGRESS_BAR_LENGTH)
+            BAR(steps, PROGRESS_BAR_LENGTH)
 RESET_LINE()
 LOG('Inference completed')

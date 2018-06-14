@@ -1,5 +1,33 @@
+from os.path import dirname, basename
 from pathlib import Path
 from subprocess import call, Popen, PIPE, STDOUT, TimeoutExpired
+
+def extract_all_frames(video_path, x=-1, extension='jpg'):
+    '''Extracts all the frames from the input video
+    
+    video_path(str) -- the path to the input video to process
+    x(int) -- the desired horizontal resolution of the exported frames
+    extension(str) -- the preferred image extension for the exported frames (jpg|png|bmp)
+    '''
+
+    assert x >= 480 or x == -1 # minimum resolution
+
+    output_folder = '{}\\{}_'.format(dirname(video_path), basename(video_path).split('.')[0])
+    Path(output_folder).mkdir(exist_ok=True)
+    args = [
+        'ffmpeg',
+        '-i', video_path,
+        '-q:v', '1',
+        '-qmin', '1',
+        '-qmax', '1',
+        '-pix_fmt', 'rgb24',
+        '-v', 'quiet',
+        '{}\\f%03d.{}'.format(output_folder, extension)
+    ]
+    if x != -1:
+        args.insert(2, '-vf')
+        args.insert(3, 'scale={}:-1'.format(x))
+    call(args)
 
 def extract_frames(video_path, output_folder, x, y=-1, start=0, duration=60, suffix='', extension='jpg'):
     '''Exports a series of frames from the input video to the specified folder.

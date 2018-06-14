@@ -62,7 +62,7 @@ def load_inference_samples(path, window):
 
     files = os.listdir(path)
     return [
-        [files[i:i + window * 2 - 1]]
+        files[i:i + window * 2]
         for i in range(len(files) - window)
     ]
 

@@ -27,7 +27,7 @@ with graph.as_default():
 
     # change this line to choose the model to train
     LOG('Creating model')
-    x = tf.placeholder_with_default(x_train, [None, None, None, None, 3] name='x')
+    x = tf.placeholder_with_default(x_train, [None, None, None, None, 3], name='x')
     yHat = deep_motion_cnn.get_network_v3(x / 255.0) * 255.0
 
     # setup the loss function

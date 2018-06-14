@@ -23,7 +23,7 @@ def load_train(path, size, window):
     return pipeline \
         .shuffle(len(groups), reshuffle_each_iteration=True) \
         .map(lambda x, y: tf.py_func(tf_load_images, inp=[x, y, path], Tout=[tf.float32, tf.float32]), num_parallel_calls=cpu_count()) \
-        .filter(lambda x, y, z: tf.py_func(ensure_difference_threshold, inp=[x], Tout=[tf.bool])) \
+        .filter(lambda x, y: tf.py_func(ensure_difference_threshold, inp=[x], Tout=[tf.bool])) \
         .repeat() \
         .batch(size) \
         .prefetch(1)

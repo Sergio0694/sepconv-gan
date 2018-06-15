@@ -6,7 +6,7 @@ import numpy as np
 from __MACRO__ import *
 import dataset.dataset_loader as data_loader
 from helpers.logger import LOG, INFO, BAR, RESET_LINE
-from networks import deep_motion_cnn
+import networks.deep_motion_unet as unet
 
 os.environ['TF_MIN_GPU_MULTIPROCESSOR_COUNT'] = '6' # Enable all GPUs
 os.environ['CUDA_DEVICE_ORDER'] = 'PCI_BUS_ID'      # See issue #152
@@ -28,7 +28,7 @@ with graph.as_default():
     # change this line to choose the model to train
     LOG('Creating model')
     x = tf.placeholder_with_default(x_train, [None, None, None, None, 3], name='x')
-    yHat = deep_motion_cnn.get_network_v3(x / 255.0) * 255.0
+    yHat = unet.get_network(x / 255.0) * 255.0
 
     # setup the loss function
     LOG('Loss setup')

@@ -24,7 +24,7 @@ def load_train(path, size, window):
     return pipeline \
         .shuffle(len(groups), reshuffle_each_iteration=True) \
         .map(lambda x, y: tf.py_func(tf_load_images, inp=[x, y, path], Tout=[tf.float32, tf.float32]), num_parallel_calls=cpu_count()) \
-        .filter(lambda x, y: tf.py_func(ensure_difference_threshold, inp=[x], Tout=[tf.bool])) \
+        .filter(lambda x, y: tf.py_func(ensure_difference_threshold, inp=[x, y], Tout=[tf.bool])) \
         .repeat() \
         .batch(size) \
         .prefetch(1)
@@ -120,13 +120,24 @@ def tf_load_images(samples, label, directory):
 
     return x, y
 
-def ensure_difference_threshold(images):
-    '''Computes the mean squared error between a series of images
+def ensure_difference_threshold(samples, label):
+    '''Computes the mean squared error between a series of images and returns whether
+    or not all the errors are in the expected interval.
 
     images(np.array) -- the input images
     threshold(int) -- the maximum squared difference between the first and last image
     '''
     
-    size = np.prod(images[0].shape)
-    error = np.sum((images[0] - images[-1]) ** 2, dtype=np.float32) / size
-    return IMAGE_DIFF_MIN_THRESHOLD < error < IMAGE_DIFF_MAX_THRESHOLD
+    # prepare the temporary list of all the sample images
+    size = np.prod(samples[0].shape)
+    if samples.shape[0] == 2:
+        images = [samples[0]] + [label] + [samples[1]]
+    else:
+        raise NotImplementedError('Invalid windows size')
+
+    # compute the interval errors
+    errors = [
+        np.sum((pair[0] - pair[-1]) ** 2, dtype=np.float32) / size
+        for pair in zip(images, images[1:])
+    ]
+    return all([IMAGE_DIFF_MIN_THRESHOLD < error < IMAGE_DIFF_MAX_THRESHOLD for error in errors])

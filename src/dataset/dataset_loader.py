@@ -25,8 +25,9 @@ def load_train(path, size, window):
     return pipeline \
         .shuffle(len(groups), reshuffle_each_iteration=True) \
         .map(lambda x, y: tf.py_func(tf_load_images, inp=[x, y, path], Tout=[tf.float32, tf.float32]), num_parallel_calls=cpu_count()) \
-        .filter(lambda x, y: tf.py_func(ensure_difference_threshold, inp=[x, y], Tout=[tf.bool])) \
+        .filter(lambda x, y: tf.py_func(ensure_difference_middle_threshold, inp=[x, y], Tout=[tf.bool])) \
         .map(lambda x, y: tf.py_func(tf_preprocess_train_images, inp=[x, y], Tout=[tf.float32, tf.float32]), num_parallel_calls=cpu_count()) \
+        .filter(lambda x, y: tf.py_func(ensure_difference_min_threshold, inp=[x, y], Tout=[tf.bool])) \
         .repeat() \
         .batch(size) \
         .prefetch(1)
@@ -152,14 +153,9 @@ def tf_preprocess_train_images(samples, label):
 
     return x, y
 
-def ensure_difference_threshold(samples, label):
-    '''Computes the mean squared error between a series of images and returns whether
-    or not all the errors are in the expected interval.
+def calculate_batch_errors(samples, label):
+    '''Shared code for ensure_difference_middle_threshold and ensure_difference_min_threshold'''
 
-    images(np.array) -- the input images
-    threshold(int) -- the maximum squared difference between the first and last image
-    '''
-    
     # prepare the temporary list of all the sample images
     size = np.prod(samples[0].shape)
     if samples.shape[0] == 2:
@@ -168,8 +164,33 @@ def ensure_difference_threshold(samples, label):
         raise NotImplementedError('Unsupported windows size')
 
     # compute the interval errors
-    errors = [
+    return [
         np.sum((pair[0] - pair[-1]) ** 2, dtype=np.float32) / size
         for pair in zip(images, images[1:])
     ]
-    return all([IMAGE_DIFF_MIN_THRESHOLD < error < IMAGE_DIFF_MAX_THRESHOLD for error in errors])
+
+def ensure_difference_middle_threshold(samples, label):
+    '''Computes the mean squared error between a series of images and returns whether
+    or not all the errors are in the expected interval.
+
+    images(np.array) -- the input images
+    threshold(int) -- the maximum squared difference between the first and last image
+    '''
+
+    return all([
+        IMAGE_DIFF_MIN_THRESHOLD < error < IMAGE_DIFF_MAX_THRESHOLD 
+        for error in calculate_batch_errors(samples, label)
+    ])
+
+def ensure_difference_min_threshold(samples, label):
+    '''Computes the mean squared error between a series of images and returns whether
+    or not all the errors respect just the minimum difference constraint.
+
+    images(np.array) -- the input images
+    threshold(int) -- the maximum squared difference between the first and last image
+    '''
+
+    return all([
+        IMAGE_DIFF_MIN_THRESHOLD < error
+        for error in calculate_batch_errors(samples, label)
+    ])

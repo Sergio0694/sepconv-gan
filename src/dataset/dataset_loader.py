@@ -72,14 +72,12 @@ def load_inference_samples(path, window):
 # auxiliary methods
 # ====================
 
-def calculate_samples_data(path, window):
-    '''Calculates the dataset contents for the input path and window size.
-    Returns the list of available files, the sample groups and the label paths.
+def load_core(path, window):
+    '''Auxiliary method for the load_train and load_test methods'''
 
-    path(str) -- the directory where the dataset is currently stored
-    window(int) -- the window size
-    '''
+    assert window >= 1      # same here
 
+    # load the available frames, group by the requested window size
     files = os.listdir(path)
     groups, labels = [], []
     for i in range(len(files) - window * 2):
@@ -88,15 +86,6 @@ def calculate_samples_data(path, window):
         if info1[0] == info2[0] and info1[1] == info2[1]:
             groups += [candidates]
             labels += [files[i + window]]
-    return files, groups, labels
-
-def load_core(path, window):
-    '''Auxiliary method for the load_train and load_test methods'''
-
-    assert window >= 1      # same here
-
-    # load the available frames, group by the requested window size
-    files, groups, labels = calculate_samples_data(path, window)
     if VERBOSE_MODE:
         LOG('{} total dataset file(s)'.format(len(files)))
         INFO('{} generated sample(s)'.format(len(groups)))

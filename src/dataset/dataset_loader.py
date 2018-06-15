@@ -1,6 +1,7 @@
 import os
 from multiprocessing import cpu_count
 import re
+from random import randint
 import cv2
 import tensorflow as tf
 import numpy as np
@@ -25,6 +26,7 @@ def load_train(path, size, window):
         .shuffle(len(groups), reshuffle_each_iteration=True) \
         .map(lambda x, y: tf.py_func(tf_load_images, inp=[x, y, path], Tout=[tf.float32, tf.float32]), num_parallel_calls=cpu_count()) \
         .filter(lambda x, y: tf.py_func(ensure_difference_threshold, inp=[x, y], Tout=[tf.bool])) \
+        .map(lambda x, y: tf.py_func(tf_preprocess_train_images, inp=[x, y], Tout=[tf.float32, tf.float32]), num_parallel_calls=cpu_count()) \
         .repeat() \
         .batch(size) \
         .prefetch(1)
@@ -109,6 +111,47 @@ def tf_load_images(samples, label, directory):
 
     return x, y
 
+def tf_preprocess_train_images(samples, label):
+    '''Clips the sample images and adds random perturbations to augment the dataset and increase variance.
+    
+    samples(list<tf.string>) -- a tensor with the list of filenames to load
+    label(tf.string) -- a tensor with the filename of the ground truth image
+    '''
+    
+    assert label.shape[0] >= TRAINING_IMAGES_SIZE and label.shape[1] >= TRAINING_IMAGES_SIZE
+
+    # setup
+    max_flow_x = min(MAX_FLOW, label.shape[1] - TRAINING_IMAGES_SIZE)
+    max_flow_y = min(MAX_FLOW, label.shape[0] - TRAINING_IMAGES_SIZE)
+    x_offset = randint(max_flow_x, label.shape[1] - TRAINING_IMAGES_SIZE - max_flow_x)
+    y_offset = randint(max_flow_y, label.shape[0] - TRAINING_IMAGES_SIZE - max_flow_y)
+    x_flow = randint(0, max_flow_x)
+    y_flow = randint(0, max_flow_y)
+
+    # clip to square, add random flow
+    if samples.shape[0] == 2:
+        x = np.array([
+            samples[0][
+                y_offset - y_flow:y_offset + TRAINING_IMAGES_SIZE - y_flow, \
+                x_offset - x_flow:x_offset + TRAINING_IMAGES_SIZE - x_flow, :
+            ],
+            samples[1][
+                y_offset + y_flow:y_offset + TRAINING_IMAGES_SIZE + y_flow, \
+                x_offset + x_flow:x_offset + TRAINING_IMAGES_SIZE + x_flow, :
+            ]
+        ], dtype=np.float32, copy=False)
+    else:
+        raise NotImplementedError('Unsupported windows size')
+    
+    # same slicing for the label, regardless of the window size
+    y = label[y_offset:y_offset + TRAINING_IMAGES_SIZE, x_offset:x_offset + TRAINING_IMAGES_SIZE, :]
+
+    # randomly reverse the frames order
+    if randint(0, 1) == 0:
+        x = np.flip(x, 0)
+
+    return x, y
+
 def ensure_difference_threshold(samples, label):
     '''Computes the mean squared error between a series of images and returns whether
     or not all the errors are in the expected interval.
@@ -122,7 +165,7 @@ def ensure_difference_threshold(samples, label):
     if samples.shape[0] == 2:
         images = [samples[0]] + [label] + [samples[1]]
     else:
-        raise NotImplementedError('Invalid windows size')
+        raise NotImplementedError('Unsupported windows size')
 
     # compute the interval errors
     errors = [

@@ -8,6 +8,7 @@ import dataset.dataset_loader as data_loader
 from helpers.logger import LOG, INFO, BAR, RESET_LINE
 import networks.generators.deep_motion_unet as unet
 import networks.discriminators.inception_resnet_mini as inception_mini
+from networks.dynamic_lr import DynamicRate
 
 os.environ['CUDA_DEVICE_ORDER'] = 'PCI_BUS_ID'      # See issue #152
 os.environ['CUDA_VISIBLE_DEVICES'] = '0'
@@ -101,17 +102,20 @@ with tf.Session(graph=graph) as session:
         session.run(tf.global_variables_initializer())
         tf.train.Saver().save(session, TENSORBOARD_RUN_DIR) # store the .meta file once
         saver = tf.train.Saver(max_to_keep=MAX_MODELS_TO_KEEP)
-        rates = {
+        rates = DynamicRate({
             0: 0.00001,
-            1: 0.00005,
-            2: 0.0001,
-            3: 0.0002,
-            4: 0.0005
-        } # to avoid issues with the first iterations exploding
+            2: 0.00005,
+            4: 0.0001,
+            5: 0.0002,
+            6: 0.0005,
+            10: 0.0001,
+            20: 0.00001,
+            40: 0.000005
+        }) # to avoid issues with the first iterations exploding
         samples, step, ticks_old = 0, 0, 0
 
         while samples < TRAINING_TOTAL_SAMPLES:
-            lr = rates.get(step, 0.001)
+            lr = rates.get(step)
             if samples // TENSORBOARD_LOG_INTERVAL > step:
                 step = samples // TENSORBOARD_LOG_INTERVAL
 

@@ -1,7 +1,7 @@
 import tensorflow as tf
 
 def get_network(x):
-    with tf.variable_scope('discriminator', None, [x], reuse=tf.AUTO_REUSE):
+    with tf.variable_scope('inception_mini', None, [x], reuse=tf.AUTO_REUSE):
         with tf.variable_scope('stem', None, [x]):
 
             # [299, ...]
@@ -44,11 +44,11 @@ def get_network(x):
             
             # [8, ...]
             with tf.variable_scope('squeeze', None, [reduction_b_out]):
-                reduction_shape = tf.shape(reduction_b_out)
-                average_pool = tf.layers.average_pooling2d(reduction_b_out, reduction_shape[1], 1)
-                squeeze = tf.squeeze(average_pool)
-                dropout_drop_prob = tf.placeholder(tf.bool, 'dropout_drop_prob')
-                dropout = tf.layers.dropout(squeeze, dropout_drop_prob)
+                reduction_shape = [reduction_b_out.shape[1], reduction_b_out.shape[1]]
+                average_pool = tf.layers.average_pooling2d(reduction_b_out, reduction_shape, reduction_shape)
+                reshape = tf.reshape(average_pool, [-1, average_pool.shape[-1]])
+                dropout_drop_prob = tf.placeholder(tf.bool, name='dropout_drop_prob')
+                dropout = tf.layers.dropout(reshape, dropout_drop_prob)
 
             # [n, ...]
             with tf.variable_scope('output', None, [dropout]):
@@ -65,7 +65,7 @@ def block_a(tensor, scale=0.8):
     block_a_b3_conv3 = tf.layers.conv2d(block_a_b3_conv2, 32, 3, padding='same')
     block_a_stack = tf.concat([block_a_b1_conv, block_a_b2_conv2, block_a_b3_conv3], -1)
     block_a_conv = tf.layers.conv2d(block_a_stack, 256, 1, padding='same')
-    return block_a_conv * scale
+    return block_a_conv * scale + tensor
 
 def reduction_a(tensor):
     reduction_a_b1_pool = tf.layers.max_pooling2d(tensor, 3, 2, padding='valid')
@@ -85,5 +85,5 @@ def reduction_b(tensor):
     reduction_b_b4_conv1 = tf.layers.conv2d(tensor, 256, 1)
     reduction_b_b4_conv2 = tf.layers.conv2d(reduction_b_b4_conv1, 256, 3, padding='same')
     reduction_b_b4_conv3 = tf.layers.conv2d(reduction_b_b4_conv2, 256, 3, 2, padding='valid')
-    reduction_b_stack = tf.concat([reduction_b_b1_pool, reduction_b_b2_conv2, reduction_b_b3_conv2, reduction_b_b4_conv3], 1)
+    reduction_b_stack = tf.concat([reduction_b_b1_pool, reduction_b_b2_conv2, reduction_b_b3_conv2, reduction_b_b4_conv3], -1)
     return reduction_b_stack

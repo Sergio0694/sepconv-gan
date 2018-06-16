@@ -145,7 +145,7 @@ with tf.Session(graph=graph) as session:
                 writer.add_summary(test_summary, samples)
                 session.run(train_init_op)
                 INFO('{}'.format(test_score))
-                BAR(0, TRAINING_DATASET_PATH, ' {:.2f} sample(s)/s'.format(samples / (time() - time_start)))
+                BAR(0, TRAINING_PROGRESS_BAR_LENGTH, ' {:.2f} sample(s)/s'.format(samples / (time() - time_start)))
             else:
                 session.run([gen_optimizer, disc_optimizer], feed_dict={eta: lr, keep_prob: 0.8})
 

@@ -8,7 +8,6 @@ import dataset.dataset_loader as data_loader
 from helpers.logger import LOG, INFO, BAR, RESET_LINE
 import networks.deep_motion_unet as unet
 
-os.environ['TF_MIN_GPU_MULTIPROCESSOR_COUNT'] = '6' # Enable all GPUs
 os.environ['CUDA_DEVICE_ORDER'] = 'PCI_BUS_ID'      # See issue #152
 os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 
@@ -18,22 +17,26 @@ with graph.as_default():
 
     # initialize the dataset
     LOG('Creating datasets')
-    with tf.variable_scope('dataset'):
+    with tf.variable_scope('generator_data'):
         train_dataset = data_loader.load_train(TRAINING_DATASET_PATH, BATCH_SIZE, 1)
         test_dataset = data_loader.load_test(TEST_DATASET_PATH, 1)
-        iterator = tf.data.Iterator.from_structure(train_dataset.output_types, train_dataset.output_shapes)
-        x_train, y = iterator.get_next()
-        train_init_op = iterator.make_initializer(train_dataset)
-        test_init_op = iterator.make_initializer(test_dataset)
+        gen_iterator = tf.data.Iterator.from_structure(train_dataset.output_types, train_dataset.output_shapes)
+        x_train, y = gen_iterator.get_next()
+        train_init_op = gen_iterator.make_initializer(train_dataset)
+        test_init_op = gen_iterator.make_initializer(test_dataset)
+    
+    with tf.variable_scope('discriminator_data'):
+        disc_dataset = data_loader.load_discriminator_samples(TRAINING_DATASET_PATH, BATCH_SIZE)
+        disc_iterator = disc_dataset.make_one_shot_iterator()
+        x_true = disc_iterator.get_next()
 
     # change this line to choose the model to train
     LOG('Creating model')
     x = tf.placeholder_with_default(x_train, [None, None, None, None, 3], name='x')
-    with tf.variable_scope('model', None, [x]):
+    with tf.variable_scope('generator', None, [x]):
         yHat = unet.get_network(x / 255.0) * 255.0
 
     # setup the loss function
-    LOG('Loss setup')
     with tf.variable_scope('optimization', None, [yHat, y]):
         with tf.variable_scope('loss', None, [yHat, y]):
             loss = 0.5 * tf.reduce_sum((yHat - y) ** 2)
@@ -46,7 +49,7 @@ with graph.as_default():
     # output image
     with tf.variable_scope('inference', None, [yHat]):
         yHat_proof = tf.verify_tensor_all_finite(yHat, 'NaN found :(', 'NaN_check')
-        uint8_img = tf.cast(yHat_proof, tf.uint8, name='uint8_img')      
+        uint8_img = tf.cast(yHat_proof, tf.uint8, name='uint8_img')
     
     # summaries
     tf.summary.scalar('TRAIN_loss', loss)

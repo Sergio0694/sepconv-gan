@@ -11,3 +11,15 @@ class DynamicRate(object):
             if step >= key:
                 return self.rates[key]
         raise RuntimeError('wut?')
+
+class DecayingRate(object):
+
+    def __init__(self, rate, decay=0.94):
+        self.rate = rate
+        self.decay = decay
+
+    def get(self):
+        '''Returns the appropriate learning rate for the current training step.'''
+        
+        lr, self.rate = self.rate, self.rate ** (1.0 / self.decay)
+        return lr

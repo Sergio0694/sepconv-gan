@@ -106,9 +106,9 @@ with tf.Session(graph=graph) as session:
         rates = DecayingRate(0.00001, 0.995)
         samples, step, ticks_old = 0, 0, 0
         time_start = time()
+        lr = rates.get()
 
         while samples < TRAINING_TOTAL_SAMPLES:
-            lr = rates.get()
             if samples // TENSORBOARD_LOG_INTERVAL > step:
                 step = samples // TENSORBOARD_LOG_INTERVAL
 
@@ -144,8 +144,12 @@ with tf.Session(graph=graph) as session:
                 test_summary = session.run(test_summary_tensor, feed_dict={test_loss: test_score})
                 writer.add_summary(test_summary, samples)
                 session.run(train_init_op)
+
+                # display additional info and progress the learning rate in use
                 INFO('{}'.format(test_score))
                 BAR(0, TRAINING_PROGRESS_BAR_LENGTH, ' {:.2f} sample(s)/s'.format(samples / (time() - time_start)))
+                ticks = 0
+                lr = rates.get()
             else:
                 session.run([gen_optimizer, disc_optimizer], feed_dict={eta: lr, keep_prob: 0.8})
 
@@ -153,6 +157,6 @@ with tf.Session(graph=graph) as session:
             samples += BATCH_SIZE
             mod = samples % TENSORBOARD_LOG_INTERVAL
             ticks = (mod * TRAINING_PROGRESS_BAR_LENGTH) // TENSORBOARD_LOG_INTERVAL
-            if ticks != ticks_old:
+            if ticks > 0 and ticks != ticks_old:
                 ticks_old = ticks
                 BAR(ticks, TRAINING_PROGRESS_BAR_LENGTH, ' {:.2f} sample(s)/s'.format(samples / (time() - time_start)))

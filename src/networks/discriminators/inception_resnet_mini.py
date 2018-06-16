@@ -32,8 +32,10 @@ def get_network(x):
         with tf.variable_scope('inception', None, [stem3_stack]):
 
             # [35, ...]
-            with tf.variable_scope('block_a', None, [stem3_stack]):
-                block_a_out = block_a(stem3_stack)
+            pipeline_reduction = tf.layers.conv2d(stem3_stack, 256, 1, activation=tf.nn.leaky_relu)
+
+            with tf.variable_scope('block_a', None, [pipeline_reduction]):
+                block_a_out = block_a(pipeline_reduction)
 
             with tf.variable_scope('reduction_a', None, [block_a_out]):
                 reduction_a_out = reduction_a(block_a_out)
@@ -56,7 +58,7 @@ def get_network(x):
 
     return dropout_drop_prob, output
 
-def block_a(tensor, scale=0.8):
+def block_a(tensor, scale=0.5):
     block_a_b1_conv = tf.layers.conv2d(tensor, 32, 1, padding='same')
     block_a_b2_conv1 = tf.layers.conv2d(tensor, 32, 1, padding='same')
     block_a_b2_conv2 = tf.layers.conv2d(block_a_b2_conv1, 32, 3, padding='same')

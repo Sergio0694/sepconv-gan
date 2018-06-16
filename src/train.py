@@ -29,7 +29,8 @@ with graph.as_default():
     with tf.variable_scope('discriminator_data'):
         disc_dataset = data_loader.load_discriminator_samples(TRAINING_DATASET_PATH, BATCH_SIZE)
         disc_iterator = disc_dataset.make_one_shot_iterator()
-        x_true = disc_iterator.get_next()
+        disc_x_next = disc_iterator.get_next()[0]
+        x_true = tf.placeholder_with_default(disc_x_next, [None, TRAINING_IMAGES_SIZE, TRAINING_IMAGES_SIZE, 3], name='x_true')
 
     # change this line to choose the model to train
     LOG('Creating model')
@@ -40,8 +41,10 @@ with graph.as_default():
 
     # discriminator setup
     with tf.variable_scope('discriminator', None, [raw_yHat, x_true]):
-        keep_prob, disc_true = inception_mini.get_network(x_true / 255.0)
-        _, disc_false = inception_mini.get_network(raw_yHat)
+        with tf.variable_scope('true', None, [x_true]):
+            keep_prob, disc_true = inception_mini.get_network(x_true / 255.0)
+        with tf.variable_scope('false', None, [raw_yHat]):
+            _, disc_false = inception_mini.get_network(tf.reshape(raw_yHat, [-1, TRAINING_IMAGES_SIZE, TRAINING_IMAGES_SIZE, 3]))
 
     # setup the loss function
     with tf.variable_scope('optimization', None, [yHat, y, disc_true, disc_false]):
@@ -59,7 +62,7 @@ with graph.as_default():
 
         with tf.variable_scope('discriminator_opt', None, [disc_true, disc_false, eta]):
             with tf.variable_scope('loss', None, [disc_true, disc_false]):
-                disc_loss = -tf.reduce_mean(tf.log(disc_true)) + tf.log(1.0 - disc_false)
+                disc_loss = -tf.reduce_mean(tf.log(disc_true) + tf.log(1.0 - disc_false))
             with tf.variable_scope('discriminator_adam', None, [disc_loss, eta, eta]):
                 with tf.control_dependencies(tf.get_collection(tf.GraphKeys.UPDATE_OPS, scope='discriminator')):
                     disc_adam = tf.train.AdamOptimizer(eta)
@@ -71,15 +74,21 @@ with graph.as_default():
         uint8_img = tf.cast(yHat_proof, tf.uint8, name='uint8_img')
     
     # summaries
-    tf.summary.scalar('TRAIN_loss', loss)
+    tf.summary.scalar('TRAIN_loss', gen_own_loss)
+    tf.summary.scalar('TRAIN_full_loss', gen_loss)
+    tf.summary.scalar('TRAIN_disc_loss', disc_loss)
     test_loss = tf.placeholder(tf.float32, name='test_loss')
     tf.summary.scalar('TEST_loss', test_loss, ['_'])
     merged_summary = tf.summary.merge_all()
 
     # model info (while inside the graph)
-    INFO('{} total variable(s)'.format(np.sum([
+    INFO('{} generator variable(s)'.format(np.sum([
         np.prod(v.get_shape().as_list()) 
-        for v in tf.trainable_variables()
+        for v in tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='generator')
+    ])))
+    INFO('{} discriminator variable(s)'.format(np.sum([
+        np.prod(v.get_shape().as_list()) 
+        for v in tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='true')
     ])))
 
 # train the model
@@ -93,10 +102,11 @@ with tf.Session(graph=graph) as session:
         tf.train.Saver().save(session, TENSORBOARD_RUN_DIR) # store the .meta file once
         saver = tf.train.Saver(max_to_keep=MAX_MODELS_TO_KEEP)
         rates = {
-            0: 0.00005,
-            1: 0.0001,
-            2: 0.0002,
-            3: 0.0005
+            0: 0.00001,
+            1: 0.00005,
+            2: 0.0001,
+            3: 0.0002,
+            4: 0.0005
         } # to avoid issues with the first iterations exploding
         samples, step, ticks_old = 0, 0, 0
 
@@ -106,10 +116,12 @@ with tf.Session(graph=graph) as session:
                 step = samples // TENSORBOARD_LOG_INTERVAL
 
                 # log to tensorboard
-                _, score, summary = session.run([adam, loss, merged_summary], feed_dict={eta: lr})
+                _, _, gen_score, gen_full_score, disc_score, summary = session.run(
+                    [gen_optimizer, disc_optimizer, gen_own_loss, gen_loss, disc_loss, merged_summary],
+                    feed_dict={eta: lr, keep_prob: 0.8})
                 writer.add_summary(summary, samples)
                 RESET_LINE()
-                LOG('#{}\t{}'.format(step, score))
+                LOG('#{}\tgen_own: {:.3f}\tgen_full: {:.3f}\tdisc: {:.3f}'.format(step, gen_score, gen_full_score, disc_score))
 
                 # save the model
                 saver.save(session, TENSORBOARD_RUN_DIR, global_step=step, write_meta_graph=False)
@@ -119,7 +131,7 @@ with tf.Session(graph=graph) as session:
                 test_score, j = 0, 0
                 while True:
                     try:
-                        score, prediction = session.run([loss, uint8_img])
+                        score, prediction = session.run([gen_own_loss, uint8_img])
                         test_score += score
 
                         # save the generated images to track progress
@@ -137,7 +149,7 @@ with tf.Session(graph=graph) as session:
                 session.run(train_init_op)
                 INFO('{}'.format(test_score))
             else:
-                _ = session.run(adam, feed_dict={eta: lr})
+                session.run([gen_optimizer, disc_optimizer], feed_dict={eta: lr, keep_prob: 0.8})
 
             # training progress
             samples += BATCH_SIZE

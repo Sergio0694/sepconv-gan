@@ -56,18 +56,18 @@ with graph.as_default():
                 gen_own_loss = tf.reduce_mean((yHat - y) ** 2)
                 gen_disc_loss = -tf.reduce_mean(tf.log(disc_false))
                 gen_loss = gen_own_loss + gen_disc_loss
-            with tf.variable_scope('generator_adam', None, [gen_loss, eta]):
+            with tf.variable_scope('generator_sgd', None, [gen_loss, eta]):
                 with tf.control_dependencies(tf.get_collection(tf.GraphKeys.UPDATE_OPS, scope='generator')):
-                    gen_adam = tf.train.AdamOptimizer(eta)
-                    gen_optimizer = gen_adam.minimize(gen_loss, var_list=tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='generator'))
+                    gen_sgd = tf.train.MomentumOptimizer(eta, 0.9, use_nesterov=True)
+                    gen_optimizer = gen_sgd.minimize(gen_loss, var_list=tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='generator'))
 
         with tf.variable_scope('discriminator_opt', None, [disc_true, disc_false, eta]):
             with tf.variable_scope('loss', None, [disc_true, disc_false]):
                 disc_loss = -tf.reduce_mean(tf.log(disc_true) + tf.log(1.0 - disc_false))
-            with tf.variable_scope('discriminator_adam', None, [disc_loss, eta, eta]):
+            with tf.variable_scope('discriminator_sgd', None, [disc_loss, eta, eta]):
                 with tf.control_dependencies(tf.get_collection(tf.GraphKeys.UPDATE_OPS, scope='discriminator')):
-                    disc_adam = tf.train.AdamOptimizer(eta)
-                    disc_optimizer = disc_adam.minimize(disc_loss, var_list=tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='discriminator'))
+                    disc_sgd = tf.train.MomentumOptimizer(eta, 0.9, use_nesterov=True)
+                    disc_optimizer = disc_sgd.minimize(disc_loss, var_list=tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='discriminator'))
 
     # output image
     with tf.variable_scope('inference', None, [yHat]):

@@ -65,10 +65,10 @@ with graph.as_default():
         with tf.variable_scope('discriminator_opt', None, [disc_true, disc_false, eta]):
             with tf.variable_scope('loss', None, [disc_true, disc_false]):
                 disc_loss = -tf.reduce_mean(tf.log(disc_true) + tf.log(1.0 - disc_false))
-            with tf.variable_scope('discriminator_sgd', None, [disc_loss, eta, eta]):
+            with tf.variable_scope('discriminator_adam', None, [disc_loss, eta, eta]):
                 with tf.control_dependencies(tf.get_collection(tf.GraphKeys.UPDATE_OPS, scope='discriminator')):
-                    disc_sgd = tf.train.MomentumOptimizer(eta, 0.9, use_nesterov=True)
-                    disc_optimizer = disc_sgd.minimize(disc_loss, var_list=tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='discriminator'))
+                    disc_adam = tf.train.AdamOptimizer()
+                    disc_optimizer = disc_adam.minimize(disc_loss, var_list=tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='discriminator'))
 
     # output image
     with tf.variable_scope('inference', None, [yHat]):

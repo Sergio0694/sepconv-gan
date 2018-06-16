@@ -7,6 +7,7 @@ from __MACRO__ import *
 import dataset.dataset_loader as data_loader
 from helpers.logger import LOG, INFO, BAR, RESET_LINE
 import networks.deep_motion_unet as unet
+import networks.discriminators.inception_resnet_mini as inception_mini
 
 os.environ['CUDA_DEVICE_ORDER'] = 'PCI_BUS_ID'      # See issue #152
 os.environ['CUDA_VISIBLE_DEVICES'] = '0'
@@ -34,17 +35,35 @@ with graph.as_default():
     LOG('Creating model')
     x = tf.placeholder_with_default(x_train, [None, None, None, None, 3], name='x')
     with tf.variable_scope('generator', None, [x]):
-        yHat = unet.get_network(x / 255.0) * 255.0
+        raw_yHat = unet.get_network(x / 255.0)
+        yHat = raw_yHat * 255.0
+
+    # discriminator setup
+    with tf.variable_scope('discriminator', None, [raw_yHat, x_true]):
+        keep_prob, disc_true = inception_mini.get_network(x_true / 255.0)
+        _, disc_false = inception_mini.get_network(raw_yHat)
 
     # setup the loss function
-    with tf.variable_scope('optimization', None, [yHat, y]):
-        with tf.variable_scope('loss', None, [yHat, y]):
-            loss = 0.5 * tf.reduce_sum((yHat - y) ** 2)
-        with tf.variable_scope('optimizer', None, [loss]):
-            with tf.control_dependencies(tf.get_collection(tf.GraphKeys.UPDATE_OPS)):
-                with tf.name_scope('adam'):
-                    eta = tf.placeholder(tf.float32)
-                    adam = tf.train.AdamOptimizer(eta).minimize(loss)
+    with tf.variable_scope('optimization', None, [yHat, y, disc_true, disc_false]):
+        eta = tf.placeholder(tf.float32)
+
+        with tf.variable_scope('generator_opt', None, [yHat, y, disc_false, eta]):
+            with tf.variable_scope('generator_loss', None, [yHat, y, disc_false]):
+                gen_own_loss = tf.reduce_mean((yHat - y) ** 2)
+                gen_disc_loss = -tf.reduce_mean(tf.log(disc_false))
+                gen_loss = gen_own_loss + gen_disc_loss
+            with tf.variable_scope('generator_adam', None, [gen_loss, eta]):
+                with tf.control_dependencies(tf.get_collection(tf.GraphKeys.UPDATE_OPS, scope='generator')):
+                    gen_adam = tf.train.AdamOptimizer(eta)
+                    gen_optimizer = gen_adam.minimize(gen_loss, var_list=tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='generator'))
+
+        with tf.variable_scope('discriminator_opt', None, [disc_true, disc_false, eta]):
+            with tf.variable_scope('loss', None, [disc_true, disc_false]):
+                disc_loss = -tf.reduce_mean(tf.log(disc_true)) + tf.log(1.0 - disc_false)
+            with tf.variable_scope('discriminator_adam', None, [disc_loss, eta, eta]):
+                with tf.control_dependencies(tf.get_collection(tf.GraphKeys.UPDATE_OPS, scope='discriminator')):
+                    disc_adam = tf.train.AdamOptimizer(eta)
+                    disc_optimizer = disc_adam.minimize(disc_loss, var_list=tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='discriminator'))
 
     # output image
     with tf.variable_scope('inference', None, [yHat]):

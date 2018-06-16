@@ -25,9 +25,9 @@ def load_train(path, size, window):
     return pipeline \
         .shuffle(len(groups), reshuffle_each_iteration=True) \
         .map(lambda x, y: tf.py_func(tf_load_images, inp=[x, y, path], Tout=[tf.float32, tf.float32]), num_parallel_calls=cpu_count()) \
-        .filter(lambda x, y: tf.py_func(ensure_difference_middle_threshold, inp=[x, y], Tout=[tf.bool])) \
+        .filter(lambda x, y: tf.py_func(tf_ensure_difference_middle_threshold, inp=[x, y], Tout=[tf.bool])) \
         .map(lambda x, y: tf.py_func(tf_preprocess_train_images, inp=[x, y], Tout=[tf.float32, tf.float32]), num_parallel_calls=cpu_count()) \
-        .filter(lambda x, y: tf.py_func(ensure_difference_min_threshold, inp=[x, y], Tout=[tf.bool])) \
+        .filter(lambda x, y: tf.py_func(tf_ensure_difference_min_threshold, inp=[x, y], Tout=[tf.bool])) \
         .repeat() \
         .batch(size) \
         .prefetch(1)
@@ -56,6 +56,26 @@ def load_test(path, window):
         .map(lambda x, y: tf.py_func(tf_load_images, inp=[x, y, path], Tout=[tf.float32, tf.float32]), num_parallel_calls=cpu_count()) \
         .batch(1) \
         .prefetch(1) # only process one sample at a time to avoid OOM issues in inference
+
+def load_discriminator_samples(path, size):
+    '''Prepares the input pipeline for the discriminator model, with the same resolution of
+    the frames used for the generator model.
+
+    path(str) -- the directory where the dataset is currently stored
+    size(int) -- the batch size for the data pipeline
+    '''
+
+    assert size > 1     # you don't say?
+
+    files = os.listdir(path)
+    return \
+        tf.data.Dataset.from_tensor_slices(files) \
+        .shuffle(len(files), reshuffle_each_iteration=True) \
+        .map(lambda x: tf.py_func(tf_load_image, inp=[x, path], Tout=[tf.float32]), num_parallel_calls=cpu_count()) \
+        .filter(lambda x: tf.py_func(tf_ensure_min_variance, inp=[x], Tout=[tf.bool])) \
+        .repeat() \
+        .batch(size) \
+        .prefetch(1)
 
 def load_inference_samples(path, window):
     '''Loads the inference samples from the input path.
@@ -112,6 +132,24 @@ def tf_load_images(samples, label, directory):
 
     return x, y
 
+def tf_load_image(sample, directory):
+    '''Loads an image, clipping them to the current training size set.'''
+
+    image = cv2.imread('{}\\{}'.format(str(directory)[2:-1], str(sample)[2:-1])).astype(np.float32)
+
+    x_offset = randint(0, image.shape[1] - TRAINING_IMAGES_SIZE)
+    y_offset = randint(0, image.shape[0] - TRAINING_IMAGES_SIZE)
+
+    return image[
+        y_offset:y_offset + TRAINING_IMAGES_SIZE, \
+        x_offset:x_offset + TRAINING_IMAGES_SIZE, :
+    ]
+
+def tf_ensure_min_variance(sample):
+    '''Checks if the input image reaches the minimum variance threshold'''
+
+    return np.max(cv2.meanStdDev(sample)[1]) >= IMAGE_MIN_VARIANCE_THRESHOLD
+
 def tf_preprocess_train_images(samples, label):
     '''Clips the sample images and adds random perturbations to augment the dataset and increase variance.
     
@@ -153,7 +191,7 @@ def tf_preprocess_train_images(samples, label):
 
     return x, y
 
-def calculate_batch_errors(samples, label):
+def tf_calculate_batch_errors(samples, label):
     '''Shared code for ensure_difference_middle_threshold and ensure_difference_min_threshold'''
 
     # prepare the temporary list of all the sample images
@@ -169,7 +207,7 @@ def calculate_batch_errors(samples, label):
         for pair in zip(images, images[1:])
     ]
 
-def ensure_difference_middle_threshold(samples, label):
+def tf_ensure_difference_middle_threshold(samples, label):
     '''Computes the mean squared error between a series of images and returns whether
     or not all the errors are in the expected interval.
 
@@ -179,10 +217,10 @@ def ensure_difference_middle_threshold(samples, label):
 
     return all([
         IMAGE_DIFF_MIN_THRESHOLD < error < IMAGE_DIFF_MAX_THRESHOLD 
-        for error in calculate_batch_errors(samples, label)
+        for error in tf_calculate_batch_errors(samples, label)
     ])
 
-def ensure_difference_min_threshold(samples, label):
+def tf_ensure_difference_min_threshold(samples, label):
     '''Computes the mean squared error between a series of images and returns whether
     or not all the errors respect just the minimum difference constraint.
 
@@ -192,5 +230,5 @@ def ensure_difference_min_threshold(samples, label):
 
     return all([
         IMAGE_DIFF_MIN_THRESHOLD < error
-        for error in calculate_batch_errors(samples, label)
+        for error in tf_calculate_batch_errors(samples, label)
     ])

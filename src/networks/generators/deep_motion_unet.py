@@ -1,5 +1,5 @@
 import tensorflow as tf
-import networks.deep_motion_cnn as cnn
+import networks._tf as _tf
 
 def get_network(x):
     '''Generates a CNN to perform image interpolation
@@ -30,7 +30,7 @@ def get_network(x):
     with tf.variable_scope('unet', None, [x]):
 
         with tf.variable_scope('reshape', None, [x]):
-            x_stack = cnn.stack_images(x)
+            x_stack = _tf.stack_images(x)
 
         with tf.variable_scope('encoder', None, [x_stack]):
             with tf.variable_scope('downscale_1', None, [x_stack]):

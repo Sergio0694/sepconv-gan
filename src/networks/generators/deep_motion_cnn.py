@@ -1,15 +1,5 @@
 import tensorflow as tf
-
-def stack_images(x):
-    '''Stacks n images over the channels dimension.
-
-    x(tf.tensor<tf.float32>) -- the input [batch, images, h, w, channels] tensor
-    '''
-
-    with tf.name_scope('frames'):
-        x_t = tf.transpose(x, [0, 2, 3, 1, 4])
-        x_shape = tf.shape(x_t, name='batch_shape')
-        return tf.reshape(x_t, [x_shape[0], x_shape[1], x_shape[2], 6], name='frames')
+import networks._tf as _tf
 
 def get_network_v1(x):
     '''Generates a simple CNN to perform image interpolation, based on the FI_CNN_model
@@ -21,7 +11,7 @@ def get_network_v1(x):
     x(tf.Tensor<tf.float32>) -- the input frames
     '''
 
-    x_stack = stack_images(x)
+    x_stack = _tf.stack_images(x)
     conv1 = tf.layers.conv2d(x_stack, 32, 3, activation=tf.nn.relu, padding='same')
     pool1 = tf.layers.max_pooling2d(conv1, 2, 2, padding='same')
     conv2 = tf.layers.conv2d(pool1, 32, 3, activation=tf.nn.relu, padding='same')

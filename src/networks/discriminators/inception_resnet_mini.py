@@ -1,7 +1,7 @@
 import tensorflow as tf
 
 def get_network(x):
-    with tf.variable_scope('inception_mini', None, [x], reuse=tf.AUTO_REUSE):
+    with tf.variable_scope('inception_mini', None, [x]):
         with tf.variable_scope('stem', None, [x]):
 
             # [299, ...]

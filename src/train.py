@@ -6,7 +6,7 @@ import numpy as np
 from __MACRO__ import *
 import dataset.dataset_loader as data_loader
 from helpers.logger import LOG, INFO, BAR, RESET_LINE
-import networks.deep_motion_unet as unet
+import networks.generators.deep_motion_unet as unet
 import networks.discriminators.inception_resnet_mini as inception_mini
 
 os.environ['CUDA_DEVICE_ORDER'] = 'PCI_BUS_ID'      # See issue #152
@@ -40,10 +40,10 @@ with graph.as_default():
         yHat = raw_yHat * 255.0
 
     # discriminator setup
-    with tf.variable_scope('discriminator', None, [raw_yHat, x_true]):
-        with tf.variable_scope('true', None, [x_true]):
+    with tf.variable_scope('discriminator', None, [raw_yHat, x_true], reuse=tf.AUTO_REUSE):
+        with tf.name_scope('true', [x_true]):
             keep_prob, disc_true = inception_mini.get_network(x_true / 255.0)
-        with tf.variable_scope('false', None, [raw_yHat]):
+        with tf.name_scope('false', [raw_yHat]):
             _, disc_false = inception_mini.get_network(tf.reshape(raw_yHat, [-1, TRAINING_IMAGES_SIZE, TRAINING_IMAGES_SIZE, 3]))
 
     # setup the loss function
@@ -88,7 +88,7 @@ with graph.as_default():
     ])))
     INFO('{} discriminator variable(s)'.format(np.sum([
         np.prod(v.get_shape().as_list()) 
-        for v in tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='true')
+        for v in tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='discriminator')
     ])))
 
 # train the model

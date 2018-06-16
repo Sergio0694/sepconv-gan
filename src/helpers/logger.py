@@ -43,6 +43,6 @@ def RESET_LINE(clean=False):
     '''
 
     if clean:
-        print('\r{}\r'.format(' ' * 50), end='', flush=True)
+        print('\r{}\r'.format(' ' * 100), end='', flush=True)
     else:
         print('\r', end='', flush=True)

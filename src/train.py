@@ -1,5 +1,6 @@
 import os
 from pathlib import Path
+from time import time
 import cv2
 import tensorflow as tf
 import numpy as np
@@ -104,6 +105,7 @@ with tf.Session(graph=graph) as session:
         saver = tf.train.Saver(max_to_keep=MAX_MODELS_TO_KEEP)
         rates = DecayingRate(0.00001, 0.995)
         samples, step, ticks_old = 0, 0, 0
+        time_start = time()
 
         while samples < TRAINING_TOTAL_SAMPLES:
             lr = rates.get()
@@ -143,6 +145,7 @@ with tf.Session(graph=graph) as session:
                 writer.add_summary(test_summary, samples)
                 session.run(train_init_op)
                 INFO('{}'.format(test_score))
+                BAR(0, TRAINING_DATASET_PATH, ' {:.2f} sample(s)/s'.format(samples / (time() - time_start)))
             else:
                 session.run([gen_optimizer, disc_optimizer], feed_dict={eta: lr, keep_prob: 0.8})
 
@@ -152,4 +155,4 @@ with tf.Session(graph=graph) as session:
             ticks = (mod * TRAINING_PROGRESS_BAR_LENGTH) // TENSORBOARD_LOG_INTERVAL
             if ticks != ticks_old:
                 ticks_old = ticks
-                BAR(ticks, TRAINING_PROGRESS_BAR_LENGTH)
+                BAR(ticks, TRAINING_PROGRESS_BAR_LENGTH, ' {:.2f} sample(s)/s'.format(samples / (time() - time_start)))

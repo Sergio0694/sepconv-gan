@@ -91,6 +91,19 @@ def load_inference_samples(path, window):
         for i in range(len(files) - window)
     ]
 
+def create_inference_pipeline(path):
+    '''Prepares the inference pipeline to be used to process the video frames.
+    
+    path(str) -- the base path of the filenames that will be fed to the pipeline
+    '''
+
+    inference_groups = tf.placeholder(tf.string, name='inference_groups')
+    return \
+        tf.data.Dataset.from_tensor_slices(inference_groups) \
+        .map(lambda x: tf.py_func(tf_load_inference_images, inp=[x, path], Tout=[tf.float32]), num_parallel_calls=cpu_count()) \
+        .batch(1) \
+        .prefetch(1)
+
 # ====================
 # auxiliary methods
 # ====================
@@ -144,6 +157,18 @@ def tf_load_image(sample, directory):
         y_offset:y_offset + TRAINING_IMAGES_SIZE, \
         x_offset:x_offset + TRAINING_IMAGES_SIZE, :
     ]
+
+def tf_load_inference_images(samples, directory):
+    '''Loads and returns a list of images from the input list of filenames
+    
+    samples(list<tf.string>) -- a tensor with the list of filenames to load
+    directory(tf.string) -- the parent directory for the input files
+    '''
+    
+    return np.array([
+        cv2.imread('{}\\{}'.format(str(directory)[2:-1], str(sample)[2:-1])).astype(np.float32)
+        for sample in samples
+    ], dtype=np.float32, copy=False)
 
 def tf_ensure_min_variance(sample):
     '''Checks if the input image reaches the minimum variance threshold'''

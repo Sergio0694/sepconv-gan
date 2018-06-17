@@ -3,7 +3,6 @@ from os import listdir
 from time import time
 import cv2
 import tensorflow as tf
-import numpy as np
 from __MACRO__ import *
 import dataset.dataset_loader as data_loader
 from helpers.logger import LOG, INFO, BAR, RESET_LINE
@@ -33,17 +32,29 @@ def process_frames(working_path, model_path=None):
     worker = Process(target=save_frame, args=[frames_queue])
     worker.start()
 
-    # restore the model
     with tf.Session() as session:
         if model_path:
+
+            # restore the model from the .meta and check point files
             LOG('Restoring model')
             meta_file_path = [path for path in listdir(model_path) if path.endswith('.meta')][0]
             saver = tf.train.import_meta_graph('{}\\{}'.format(model_path, meta_file_path))
             saver.restore(session, tf.train.latest_checkpoint(model_path))
+
+            # setup the input pipeline
+            pipeline = data_loader.create_inference_pipeline(working_path)
+            inference_iterator = pipeline.make_initializable_iterator()     
+            tf.add_to_collection('inference', inference_iterator)
+            sample_tensor = tf.squeeze(inference_iterator.get_next(), axis=0)
+            tf.add_to_collection('inference', sample_tensor)
+
         graph = tf.get_default_graph()
 
         # initialization
         LOG('Initialization')
+        pipeline_tensors = tf.get_collection('inference')
+        pipeline_placeholder = graph.get_tensor_by_name('inference_groups:0')
+        session.run(pipeline_tensors[0].initializer, feed_dict={pipeline_placeholder: groups})
         x = graph.get_tensor_by_name('x:0')
         yHat = graph.get_tensor_by_name('inference/uint8_img:0')
 
@@ -55,10 +66,7 @@ def process_frames(working_path, model_path=None):
         for i, group in enumerate(groups):
 
             # load the current sample
-            frames = np.array([[
-                cv2.imread('{}\\{}'.format(working_path, sample)).astype(np.float32)
-                for sample in group
-            ]], dtype=np.float32, copy=False)
+            frames = session.run(pipeline_tensors[1])
             filename = group[previous_idx][:-4]
 
             # inference
@@ -74,7 +82,7 @@ def process_frames(working_path, model_path=None):
     RESET_LINE(True)
 
     # wait for the background thread
-    queue.put(None)
+    frames_queue.put(None)
     worker.join()
-    queue.close()
+    frames_queue.close()
     LOG('Inference completed')

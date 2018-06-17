@@ -28,8 +28,8 @@ def convert(args):
     # Initial setup and info
     LOG('Processing {}'.format(args['source']))
     duration = ffmpeg.get_video_duration(args['source'])
-    if duration == 0:
-        raise ValueError('Invalid video file')
+    if duration < 10:
+        raise ValueError('The video file is either empty or too short')
     INFO('Total duration: {}'.format(format_duration(duration)))
 
     # Loop until all video chunks have been created

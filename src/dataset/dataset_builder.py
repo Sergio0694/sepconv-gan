@@ -47,7 +47,7 @@ def build_dataset(source_path, output_path, seconds, splits, x, y=-1, encoding='
                 for chunk in range(splits):
                     if VERBOSE_MODE:
                         BAR(chunk, splits)
-                    if not extract_frames(
+                    if not extract_frames( #TODO: fix this (broken by refactoring)
                             video_path, output_path, x, y,
                             step * (chunk + 1) - (split_seconds // 2), # offset to before the current chunk
                             split_seconds,

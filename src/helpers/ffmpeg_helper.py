@@ -13,16 +13,16 @@ def extract_frames(video_path, output_folder, scale=None, start=0, duration=60, 
     extension(str) -- the preferred image extension for the exported frames (jpg|png|bmp)
     '''
     
-    assert start > 0
+    assert start >= 0
     assert duration >= 1 # really?
     assert scale is None or \
             (len(scale) == 2 and (scale[0] >= 240 or scale[0] == -1) \
             and (scale[1] >= 240 or scale[1] == -1) and not (scale[0] == -1 and scale[1] == -1))
 
     Path(output_folder).mkdir(exist_ok=True)
+    formatted_frames_path = '{}\\{}%03d.{}'.format(output_folder, suffix, extension)
     args = [
         'ffmpeg',
-        '-ss', str(start),
         '-i', video_path,
         '-to', str(duration), # -ss resets the timestep to target start time
         '-q:v', '1',
@@ -30,8 +30,13 @@ def extract_frames(video_path, output_folder, scale=None, start=0, duration=60, 
         '-qmax', '1',
         '-pix_fmt', 'rgb24',
         '-v', 'quiet',
-        '{}\\{}%03d.{}'.format(output_folder, suffix, extension)
+        formatted_frames_path
     ]
+
+    # optional start time
+    if start > 0:
+        args.inser(1, '-ss')
+        args.insert(2, str(start))
 
     # optional rescaling
     if scale is not None:
@@ -40,9 +45,9 @@ def extract_frames(video_path, output_folder, scale=None, start=0, duration=60, 
 
     try:
         call(args, timeout=10)
-        return True
+        return formatted_frames_path
     except TimeoutExpired:
-        return False
+        return None
 
 def get_video_duration(video_path):
     '''Returns the duration of the video specified by the given path, in seconds.
@@ -60,11 +65,10 @@ def get_video_duration(video_path):
     except ValueError:
         return -1
 
-def create_video(frames_path, original_path, output_path, encoder='h264', crf='23', preset='normal'):
+def create_video(frames_path, output_path, encoder='h264', crf='23', preset='normal'):
     '''Creates an interpolated video from the input frames.
 
     frames_path(str) -- the formatted path of the folder with the source frames (returned by extract_all_frames)
-    original_path(str) -- the path of the original video
     output_path(str) -- the path of the video file to create
     encoder(str) -- the encoder to use
     crf(str) -- the CRF value for the encoder
@@ -73,20 +77,35 @@ def create_video(frames_path, original_path, output_path, encoder='h264', crf='2
 
     call([
         'ffmpeg',
-        '-loglevel', 'fatal',
         '-y',
         '-framerate', '48000/1001',
         '-start_number', '1',
         '-i', frames_path,
-        '-i', original_path,
         '-c:v', 'libx{}'.format(encoder[1:]),
         '-crf', crf,
         '-preset', preset,
         '-r', '48000/1001',
         '-pix_fmt', 'yuv420p',
-        '-c:a', 'copy',
-        '-strict', 'experimental',
-        '-shortest',
         output_path
     ])
     return output_path
+
+def concat_videos(list_path, original_path, output_path):
+    '''Creates a new video by concatenating the source chunks from the input
+    list with the audio from the second input video.
+
+    list_path(str) -- the path of the txt file with the list of video chunks
+    origina-path(str) -- the path of the original video, to use to get the audio track
+    output_path(str) -- the path of the output video to create
+
+    call([
+        'ffmpeg',
+        '-f', 'concat',
+        '-safe', '0', # not really necessary
+        '-i', list_path,
+        '-i', original_path,
+        '-c', '-copy',
+        '-map', '0:0',
+        '-map', '1:1',
+        output_path
+    ])

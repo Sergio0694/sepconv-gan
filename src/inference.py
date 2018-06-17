@@ -9,7 +9,7 @@ from helpers.logger import LOG, INFO, BAR, RESET_LINE
 
 PROGRESS_BAR_LENGTH = 20
 
-def process_frames(working_path, model_path):
+def process_frames(working_path, model_path=None):
     
     # load the inference raw data
     LOG('Preparing samples')
@@ -19,18 +19,18 @@ def process_frames(working_path, model_path):
     INFO('{} sample(s) to process'.format(len(groups)))
 
     # restore the model
-    LOG('Restoring model')
-    meta_file_path = [path for path in listdir(model_path) if path.endswith('.meta')][0]
-    tf.reset_default_graph()
     with tf.Session() as session:
-        saver = tf.train.import_meta_graph('{}\\{}'.format(model_path, meta_file_path))
-        saver.restore(session, tf.train.latest_checkpoint(model_path))
+        if model_path:
+            LOG('Restoring model')
+            meta_file_path = [path for path in listdir(model_path) if path.endswith('.meta')][0]
+            saver = tf.train.import_meta_graph('{}\\{}'.format(model_path, meta_file_path))
+            saver.restore(session, tf.train.latest_checkpoint(model_path))
         graph = tf.get_default_graph()
 
         # initialization
         LOG('Initialization')
         x = graph.get_tensor_by_name('x:0')
-        yHat = graph.get_tensor_by_name('uint8_img:0')
+        yHat = graph.get_tensor_by_name('inference/uint8_img:0')
 
         # process the data
         LOG('Processing items')

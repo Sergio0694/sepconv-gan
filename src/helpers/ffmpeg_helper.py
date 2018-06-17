@@ -1,4 +1,4 @@
-from os.path import dirname, basename
+from os.path import basename
 from pathlib import Path
 from subprocess import call, Popen, PIPE, STDOUT, TimeoutExpired
 
@@ -11,7 +11,7 @@ def extract_all_frames(video_path, output_path, x=-1, extension='jpg'):
     extension(str) -- the preferred image extension for the exported frames (jpg|png|bmp)
     '''
 
-    assert x >= 480 or x == -1 # minimum resolution
+    assert x >= 240 or x == -1 # minimum resolution
 
     # setup
     output_folder = '{}\\{}_'.format(output_path, basename(video_path).split('.')[0])
@@ -88,13 +88,15 @@ def get_video_duration(video_path):
     except ValueError:
         return -1
 
-def create_video(frames_path, original_path, output_path):
+def create_video(frames_path, original_path, output_path, encoder='h264', crf='23', preset='normal'):
     '''Creates an interpolated video from the input frames.
 
     frames_path(str) -- the formatted path of the folder with the source frames (returned by extract_all_frames)
-    extension(str) -- the extension of the source frames
     original_path(str) -- the path of the original video
     output_path(str) -- the path of the video file to create
+    encoder(str) -- the encoder to use
+    crf(str) -- the CRF value for the encoder
+    preset(str) -- the encoder preset to use
     '''
 
     call([
@@ -105,8 +107,9 @@ def create_video(frames_path, original_path, output_path):
         '-start_number', '1',
         '-i', frames_path,
         '-i', original_path,
-        '-c:v', 'libx265',
-        '-crf', '17',
+        '-c:v', 'libx{}'.format(encoder[1:]),
+        '-crf', crf,
+        '-preset', preset,
         '-r', '48000/1001',
         '-pix_fmt', 'yuv420p',
         '-c:a', 'copy',

@@ -34,7 +34,7 @@ if __name__ == '__main__':
         raise ValueError('The input model directory does not exist.')
     if args['encoder'] not in ['h264', 'h265']:
         raise ValueError('The encoder must be either h264 or h265')
-    if not 0 <= args['crf'] <= 51:
+    if not args['crf'].isdigit() or not 0 <= int(args['crf']) <= 51:
         raise ValueError('The CRF value must be in the [0-51] range.')
     if args['preset'] not in ['ultrafast' 'superfast', 'veryfast', 'faster', 'fast', 'medium', 'slow', 'slower', 'veryslow']:
         raise ValueError('Invalid preset value, see trac.ffmpeg.org/wiki/Encode/H.264 for more info.')
@@ -81,5 +81,5 @@ def convert(params):
 
     # encode the interpolated video
     LOG('Encoding output video')
-    create_video(frames_path, params['source'], params['output'])
+    create_video(frames_path, params['source'], params['output'], params['encoder'], params['crf'], params['preset'])
     LOG('{} created'.format(params['output']))

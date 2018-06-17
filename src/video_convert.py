@@ -76,12 +76,14 @@ def convert(params):
             chunk_timestep += 1
 
     # prepare the list file
+    LOG('Preparing final merge, {} chunk(s) available'.format(len(chunks_paths)))
     list_path = os.path.join(args['working_dir'], 'list.txt')
     with open(list_path, 'w', encoding='utf-8') as txt:
         for path in chunks_paths:
             print('file \'{}\''.format(path), file=txt)
     
     # create the final resampled video
+    LOG('Creating output video')
     ffmpeg.concat_videos(list_path, args['source'], args['output'])
     rmtree(args['working_dir']) # cleanup
 

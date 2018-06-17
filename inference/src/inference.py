@@ -51,11 +51,11 @@ def open_session(model_path, dataset_path):
 def process_frames(working_path, session):
     
     # load the inference raw data
-    LOG('Preparing samples')
+    LOG('Preparing frames')
     groups = dataset.load_samples(working_path, 1)
     previous_idx = len(groups[0]) // 2 - 1
     extension = groups[0][0][-4:] # same image format as the input
-    INFO('{} sample(s) to process'.format(len(groups)))
+    INFO('{} frame(s) to process'.format(len(groups)))
 
     # setup the background worked
     frames_queue = Queue()
@@ -72,7 +72,7 @@ def process_frames(working_path, session):
     yHat = graph.get_tensor_by_name('inference/uint8_img:0')
 
     # process the data
-    LOG('Processing items')
+    LOG('Processing frames')
     BAR(0, PROGRESS_BAR_LENGTH)
     steps = 0
     start_seconds = time()

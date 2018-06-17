@@ -7,10 +7,9 @@ from __MACRO__ import *
 import dataset.dataset_loader as data_loader
 from helpers.logger import LOG, INFO, BAR, RESET_LINE
 
-MODEL_ROOT_PATH = r'D:\ML\th\trained_models\simple_cnn_v3_520.000'
 PROGRESS_BAR_LENGTH = 20
 
-def process_frames(working_path):
+def process_frames(working_path, model_path):
     
     # load the inference raw data
     LOG('Preparing samples')
@@ -21,11 +20,11 @@ def process_frames(working_path):
 
     # restore the model
     LOG('Restoring model')
-    meta_file_path = [path for path in listdir(MODEL_ROOT_PATH) if path.endswith('.meta')][0]
+    meta_file_path = [path for path in listdir(model_path) if path.endswith('.meta')][0]
     tf.reset_default_graph()
     with tf.Session() as session:
-        saver = tf.train.import_meta_graph('{}\\{}'.format(MODEL_ROOT_PATH, meta_file_path))
-        saver.restore(session, tf.train.latest_checkpoint(MODEL_ROOT_PATH))
+        saver = tf.train.import_meta_graph('{}\\{}'.format(model_path, meta_file_path))
+        saver.restore(session, tf.train.latest_checkpoint(model_path))
         graph = tf.get_default_graph()
 
         # initialization

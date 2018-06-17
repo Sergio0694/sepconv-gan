@@ -2,10 +2,11 @@ from os.path import dirname, basename
 from pathlib import Path
 from subprocess import call, Popen, PIPE, STDOUT, TimeoutExpired
 
-def extract_all_frames(video_path, x=-1, extension='jpg'):
+def extract_all_frames(video_path, output_path, x=-1, extension='jpg'):
     '''Extracts all the frames from the input video.
     
     video_path(str) -- the path to the input video to process
+    output_path(str) -- the path where to save the output frames
     x(int) -- the desired horizontal resolution of the exported frames
     extension(str) -- the preferred image extension for the exported frames (jpg|png|bmp)
     '''
@@ -13,7 +14,7 @@ def extract_all_frames(video_path, x=-1, extension='jpg'):
     assert x >= 480 or x == -1 # minimum resolution
 
     # setup
-    output_folder = '{}\\{}_'.format(dirname(video_path), basename(video_path).split('.')[0])
+    output_folder = '{}\\{}_'.format(output_path, basename(video_path).split('.')[0])
     frames_formatted_path = '{}\\f%03d.{}'.format(output_folder, extension)
     Path(output_folder).mkdir(exist_ok=True)
     args = [
@@ -87,15 +88,15 @@ def get_video_duration(video_path):
     except ValueError:
         return -1
 
-def create_video(frames_path, original_path):
+def create_video(frames_path, original_path, output_path):
     '''Creates an interpolated video from the input frames.
 
     frames_path(str) -- the formatted path of the folder with the source frames (returned by extract_all_frames)
     extension(str) -- the extension of the source frames
-    original_path(str) -- the path of the oririginal video
+    original_path(str) -- the path of the original video
+    output_path(str) -- the path of the video file to create
     '''
 
-    output_path = '{}_resampled.mp4'.format(original_path[:-4])
     call([
         'ffmpeg',
         '-loglevel', 'fatal',

@@ -1,47 +1,12 @@
-from os.path import basename
 from pathlib import Path
 from subprocess import call, Popen, PIPE, STDOUT, TimeoutExpired
 
-def extract_all_frames(video_path, output_path, x=-1, extension='jpg'):
-    '''Extracts all the frames from the input video.
-    
-    video_path(str) -- the path to the input video to process
-    output_path(str) -- the path where to save the output frames
-    x(int) -- the desired horizontal resolution of the exported frames
-    extension(str) -- the preferred image extension for the exported frames (jpg|png|bmp)
-    '''
-
-    assert x >= 240 or x == -1 # minimum resolution
-
-    # setup
-    Path(output_path).mkdir(exist_ok=True)
-    frames_formatted_path = '{}\\f%03d.{}'.format(output_path, extension)
-    args = [
-        'ffmpeg',
-        '-i', video_path,
-        '-q:v', '1',
-        '-qmin', '1',
-        '-qmax', '1',
-        '-pix_fmt', 'rgb24',
-        frames_formatted_path
-    ]
-
-    # optional rescaling
-    if x != -1:
-        args.insert(3, '-vf')
-        args.insert(4, 'scale={}:-1'.format(x))
-
-    # process and return the output folder path
-    call(args)
-    return frames_formatted_path
-
-def extract_frames(video_path, output_folder, x, y=-1, start=0, duration=60, suffix='', extension='jpg'):
+def extract_frames(video_path, output_folder, scale=None, start=0, duration=60, suffix='', extension='jpg'):
     '''Exports a series of frames from the input video to the specified folder.
 
     video_path(str) -- the path to the input video
     output_folder(str) -- the path of the desired output folder for the video frames
-    x(int) -- the desired horizontal resolution of the exported frames
-    y(int) -- the desired vertical resolution of the exported frames
+    scale(list<int>) -- the optional desired resolution of the exported frames
     start(int) -- the export start time, in seconds
     duration(int) -- the number of seconds to export
     suffix(str) -- an identifier for the exported frames
@@ -50,22 +15,31 @@ def extract_frames(video_path, output_folder, x, y=-1, start=0, duration=60, suf
     
     assert start > 0
     assert duration >= 1 # really?
+    assert scale is None or \
+            (len(scale) == 2 and (scale[0] >= 240 or scale[0] == -1) \
+            and (scale[1] >= 240 or scale[1] == -1) and not (scale[0] == -1 and scale[1] == -1))
 
     Path(output_folder).mkdir(exist_ok=True)
+    args = [
+        'ffmpeg',
+        '-ss', str(start),
+        '-i', video_path,
+        '-to', str(duration), # -ss resets the timestep to target start time
+        '-q:v', '1',
+        '-qmin', '1',
+        '-qmax', '1',
+        '-pix_fmt', 'rgb24',
+        '-v', 'quiet',
+        '{}\\{}%03d.{}'.format(output_folder, suffix, extension)
+    ]
+
+    # optional rescaling
+    if scale is not None:
+        args.insert(4, '-vf')
+        args.insert(5, 'scale={}:{}'.format(scale[0], scale[1]))
+
     try:
-        call([
-            'ffmpeg',
-            '-ss', str(start),
-            '-i', video_path,
-            '-to', str(duration), # -ss resets the timestep to target start time
-            '-vf', 'scale={}:{}'.format(x, y),
-            '-q:v', '1',
-            '-qmin', '1',
-            '-qmax', '1',
-            '-pix_fmt', 'rgb24',
-            '-v', 'quiet',
-            '{}\\{}%03d.{}'.format(output_folder, suffix, extension)
-        ], timeout=10)
+        call(args, timeout=10)
         return True
     except TimeoutExpired:
         return False

@@ -15,6 +15,7 @@ if __name__ == '__main__':
     parser.add_argument('-scale', default=-1, help='The optional scaling of the video (horizontal resolution).')
     parser.add_argument('--model-path', default=r'\model', help='The folder with the trained model to use.', required=True)    
     parser.add_argument('--working-dir', help='An optional path for the working dir to use to store temporary files.')
+    parser.add_argument('--temp-buffer-lenght', default=1, help='The maximum duration of temporary video buffers to store on disk.')
     parser.add_argument('-encoder', default='h264', help='The video encoder [h264|h265].')
     parser.add_argument('-crf', default='23', help='The CRF quality for the encoded video [0-51].')
     parser.add_argument('-preset', default='medium', help='The encoding profile (see trac.ffmpeg.org/wiki/Encode/H.264).')    
@@ -26,12 +27,18 @@ if __name__ == '__main__':
         raise ValueError('The input file does not exist')
     if args['frame_quality'] not in ['jpg', 'png', 'bmp']:
         raise ValueError('The frame quality must be either jpb, png or bmp.')
-    if args['scale'] is not None and (not args['scale'].isdigit() or int(args['scale']) < 240):
-        raise ValueError('The scale must be at least equal to 240.')
-    else:
-        args['scale'] = int(args['scale'])
+    if args['scale'] != -1:
+        if not args['scale'].isdigit() or int(args['scale']) < 240:
+            raise ValueError('The scale must be at least equal to 240.')
+        else:
+            args['scale'] = int(args['scale'])
     if not os.path.isdir(args['model_path']):
         raise ValueError('The input model directory does not exist.')
+    if args['temp_buffer_lenght'] != 1:
+        if not args['temp_buffer_lenght'].isdigit():
+            raise ValueError('Invalid temp buffer length')
+        else:
+            args['temp_buffer_lenght'] = int(args['temp_buffer_lenght'])
     if args['encoder'] not in ['h264', 'h265']:
         raise ValueError('The encoder must be either h264 or h265')
     if not args['crf'].isdigit() or not 0 <= int(args['crf']) <= 51:

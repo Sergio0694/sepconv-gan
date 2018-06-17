@@ -40,8 +40,9 @@ def convert(params):
             extract_ok = ffmpeg.extract_frames(
                 params['source'], frames_path,
                 [args['scale'], -1] if args['scale'] is not None else None,
-                video_timestep, step_size, extension=args['frame_quality'])
+                video_timestep, step_size, extension=args['frame_quality'], timeout=None)
             if not extract_ok: # this should never happen
+                LOG('Failed to extract frames')
                 exit(1)
             if not os.listdir(frames_path):
                 break

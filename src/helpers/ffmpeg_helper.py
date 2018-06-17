@@ -1,7 +1,7 @@
 from pathlib import Path
 from subprocess import call, Popen, PIPE, STDOUT, TimeoutExpired
 
-def extract_frames(video_path, output_folder, scale=None, start=0, duration=60, suffix='', extension='jpg'):
+def extract_frames(video_path, output_folder, scale=None, start=0, duration=60, suffix='', extension='jpg', timeout=10):
     '''Exports a series of frames from the input video to the specified folder.
 
     video_path(str) -- the path to the input video
@@ -13,6 +13,7 @@ def extract_frames(video_path, output_folder, scale=None, start=0, duration=60, 
     extension(str) -- the preferred image extension for the exported frames (jpg|png|bmp)
     '''
     
+    assert timeout is None or timeout >= 10
     assert start >= 0
     assert duration >= 1 # really?
     assert scale is None or \
@@ -42,11 +43,15 @@ def extract_frames(video_path, output_folder, scale=None, start=0, duration=60, 
         args.insert(4, '-vf')
         args.insert(5, 'scale={}:{}'.format(scale[0], scale[1]))
 
-    try:
-        call(args, timeout=10)
+    if timeout:
+        try:
+            call(args, timeout=10)
+            return True
+        except TimeoutExpired:
+            return False
+    else:
+        call(args)
         return True
-    except TimeoutExpired:
-        return False
 
 def get_video_duration(video_path):
     '''Returns the duration of the video specified by the given path, in seconds.

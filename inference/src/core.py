@@ -47,10 +47,14 @@ def convert(args):
                 args['source'], frames_path,
                 [args['scale'], -1] if args['scale'] is not None else None,
                 video_timestep, step_size, extension=args['frame_quality'], timeout=None)
-            if not extract_ok: # this should never happen
+            frames = os.listdir(frames_path)
+
+            # progress checks
+            if not extract_ok or (not frames and video_timestep == 0): 
                 LOG('Failed to extract frames')
+                rmtree(args['working_dir'])
                 exit(1)
-            if not os.listdir(frames_path):
+            if not frames:
                 break
             video_timestep += step_size
 
@@ -58,8 +62,7 @@ def convert(args):
             process_frames(frames_path, session)
 
             # sort the frames by alternating the original and the interpolated
-            LOG('Preparing generated frames')
-            frames = os.listdir(frames_path)        
+            LOG('Preparing generated frames')                    
             frames.sort(key=frames_name_comparer)
 
             # duplicate the last frame (no interpolation available)
@@ -91,4 +94,5 @@ def convert(args):
     # create the final resampled video
     LOG('Creating output video')
     ffmpeg.concat_videos(list_path, args['source'], args['output'])
+    LOG('Video creation completed')
     rmtree(args['working_dir']) # cleanup

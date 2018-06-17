@@ -14,9 +14,8 @@ def extract_all_frames(video_path, output_path, x=-1, extension='jpg'):
     assert x >= 240 or x == -1 # minimum resolution
 
     # setup
-    output_folder = '{}\\{}_'.format(output_path, basename(video_path).split('.')[0])
-    frames_formatted_path = '{}\\f%03d.{}'.format(output_folder, extension)
-    Path(output_folder).mkdir(exist_ok=True)
+    Path(output_path).mkdir(exist_ok=True)
+    frames_formatted_path = '{}\\f%03d.{}'.format(output_path, extension)
     args = [
         'ffmpeg',
         '-i', video_path,
@@ -24,18 +23,17 @@ def extract_all_frames(video_path, output_path, x=-1, extension='jpg'):
         '-qmin', '1',
         '-qmax', '1',
         '-pix_fmt', 'rgb24',
-        '-v', 'quiet',
         frames_formatted_path
     ]
 
     # optional rescaling
     if x != -1:
-        args.insert(2, '-vf')
-        args.insert(3, 'scale={}:-1'.format(x))
+        args.insert(3, '-vf')
+        args.insert(4, 'scale={}:-1'.format(x))
 
     # process and return the output folder path
     call(args)
-    return output_folder, frames_formatted_path
+    return frames_formatted_path
 
 def extract_frames(video_path, output_folder, x, y=-1, start=0, duration=60, suffix='', extension='jpg'):
     '''Exports a series of frames from the input video to the specified folder.
@@ -58,8 +56,8 @@ def extract_frames(video_path, output_folder, x, y=-1, start=0, duration=60, suf
         call([
             'ffmpeg',
             '-ss', str(start),
-            '-t', str(duration),
             '-i', video_path,
+            '-to', str(duration), # -ss resets the timestep to target start time
             '-vf', 'scale={}:{}'.format(x, y),
             '-q:v', '1',
             '-qmin', '1',

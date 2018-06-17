@@ -111,7 +111,7 @@ def concat_videos(list_path, original_path, output_path):
         '-i', list_path,
         '-i', original_path,
         '-c', 'copy',
-        '-map', '0:0',
-        '-map', '1:1',
+        '-map', '0:v:0',
+        '-map', '1:a:0',
         output_path
     ])

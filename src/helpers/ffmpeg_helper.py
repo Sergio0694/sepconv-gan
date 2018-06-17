@@ -77,6 +77,7 @@ def create_video(frames_path, output_path, encoder='h264', crf='23', preset='nor
     call([
         'ffmpeg',
         '-y',
+        '-loglevel', 'error',
         '-framerate', '48000/1001',
         '-start_number', '1',
         '-i', frames_path,
@@ -103,7 +104,7 @@ def concat_videos(list_path, original_path, output_path):
         '-safe', '0', # not really necessary
         '-i', list_path,
         '-i', original_path,
-        '-c', '-copy',
+        '-c', 'copy',
         '-map', '0:0',
         '-map', '1:1',
         output_path

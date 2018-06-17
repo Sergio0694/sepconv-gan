@@ -18,7 +18,31 @@ def save_frame(queue):
             break
         cv2.imwrite(task[0], task[1][0], [int(cv2.IMWRITE_JPEG_QUALITY), 100])
 
-def process_frames(working_path, model_path=None):
+def open_session(model_path, dataset_path):
+    '''Loads a saved moden and opens a session for the inference pass.
+    
+    model_path(str) -- the path of the saved model
+    dataset_path(str) -- the path to the dataset to process
+    '''
+
+    session = tf.Session()
+
+    # restore the model from the .meta and check point files
+    LOG('Restoring model')
+    meta_file_path = [path for path in listdir(model_path) if path.endswith('.meta')][0]
+    saver = tf.train.import_meta_graph('{}\\{}'.format(model_path, meta_file_path))
+    saver.restore(session, tf.train.latest_checkpoint(model_path))
+
+    # setup the input pipeline
+    pipeline = data_loader.create_inference_pipeline(dataset_path)
+    inference_iterator = pipeline.make_initializable_iterator()     
+    tf.add_to_collection('inference', inference_iterator)
+    sample_tensor = tf.squeeze(inference_iterator.get_next(), axis=0)
+    tf.add_to_collection('inference', sample_tensor)
+    
+    return session
+
+def process_frames(working_path, session):
     
     # load the inference raw data
     LOG('Preparing samples')
@@ -32,53 +56,36 @@ def process_frames(working_path, model_path=None):
     worker = Process(target=save_frame, args=[frames_queue])
     worker.start()
 
-    with tf.Session() as session:
-        if model_path:
+    # initialization
+    LOG('Initialization')
+    graph = tf.get_default_graph()
+    pipeline_tensors = tf.get_collection('inference')
+    pipeline_placeholder = graph.get_tensor_by_name('inference_groups:0')
+    session.run(pipeline_tensors[0].initializer, feed_dict={pipeline_placeholder: groups})
+    x = graph.get_tensor_by_name('x:0')
+    yHat = graph.get_tensor_by_name('inference/uint8_img:0')
 
-            # restore the model from the .meta and check point files
-            LOG('Restoring model')
-            meta_file_path = [path for path in listdir(model_path) if path.endswith('.meta')][0]
-            saver = tf.train.import_meta_graph('{}\\{}'.format(model_path, meta_file_path))
-            saver.restore(session, tf.train.latest_checkpoint(model_path))
+    # process the data
+    LOG('Processing items')
+    BAR(0, PROGRESS_BAR_LENGTH)
+    steps = 0
+    start_seconds = time()
+    for i, group in enumerate(groups):
 
-            # setup the input pipeline
-            pipeline = data_loader.create_inference_pipeline(working_path)
-            inference_iterator = pipeline.make_initializable_iterator()     
-            tf.add_to_collection('inference', inference_iterator)
-            sample_tensor = tf.squeeze(inference_iterator.get_next(), axis=0)
-            tf.add_to_collection('inference', sample_tensor)
+        # load the current sample
+        frames = session.run(pipeline_tensors[1])
+        filename = group[previous_idx][:-4]
 
-        graph = tf.get_default_graph()
+        # inference
+        prediction = session.run(yHat, feed_dict={x: frames})
+        frame_path = '{}\\{}_{}'.format(working_path, filename, extension)
+        frames_queue.put((frame_path, prediction))
 
-        # initialization
-        LOG('Initialization')
-        pipeline_tensors = tf.get_collection('inference')
-        pipeline_placeholder = graph.get_tensor_by_name('inference_groups:0')
-        session.run(pipeline_tensors[0].initializer, feed_dict={pipeline_placeholder: groups})
-        x = graph.get_tensor_by_name('x:0')
-        yHat = graph.get_tensor_by_name('inference/uint8_img:0')
-
-        # process the data
-        LOG('Processing items')
-        BAR(0, PROGRESS_BAR_LENGTH)
-        steps = 0
-        start_seconds = time()
-        for i, group in enumerate(groups):
-
-            # load the current sample
-            frames = session.run(pipeline_tensors[1])
-            filename = group[previous_idx][:-4]
-
-            # inference
-            prediction = session.run(yHat, feed_dict={x: frames})
-            frame_path = '{}\\{}_{}'.format(working_path, filename, extension)
-            frames_queue.put((frame_path, prediction))
-
-            # update the UI
-            progress = (i * PROGRESS_BAR_LENGTH) // len(groups)
-            if progress > steps:
-                steps = progress
-                BAR(steps, PROGRESS_BAR_LENGTH, ' | {0:.3f} fps'.format((i + 1) / (time() - start_seconds)))
+        # update the UI
+        progress = (i * PROGRESS_BAR_LENGTH) // len(groups)
+        if progress > steps:
+            steps = progress
+            BAR(steps, PROGRESS_BAR_LENGTH, ' | {0:.3f} fps'.format((i + 1) / (time() - start_seconds)))
     RESET_LINE(True)
 
     # wait for the background thread

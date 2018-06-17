@@ -4,7 +4,7 @@ import re
 from shutil import copyfile, rmtree
 import helpers.ffmpeg_helper as ffmpeg
 from helpers.logger import LOG, INFO, BAR, RESET_LINE
-from inference import process_frames
+from inference import process_frames, open_session
 
 def frames_name_comparer(name):
     info = re.findall('([0-9]+)(_)?', name)[0]
@@ -30,48 +30,49 @@ def convert(params):
     frames_path = os.path.join(args['working_dir'], 'frames')
     chunk_timestep, video_timestep, step_size = 1, 0, args['temp_buffer_lenght'] * 20
     chunks_paths = []
-    while True:
-        LOG('Converting {} to {}'.format(format_duration(video_timestep), format_duration(min(video_timestep + step_size, duration))))
+    with open_session(params['model_path'], frames_path) as session:
+        while True:
+            LOG('Converting {} to {}'.format(format_duration(video_timestep), format_duration(min(video_timestep + step_size, duration))))
 
-        # Extract the frames from the n-th video chunk
-        if os.path.isdir(frames_path):
-            rmtree(frames_path)
-        extract_ok = ffmpeg.extract_frames(
-            params['source'], frames_path,
-            [args['scale'], -1] if args['scale'] is not None else None,
-            video_timestep, step_size, extension=args['frame_quality'])
-        if not extract_ok: # this should never happen
-            exit(1)
-        if not os.listdir(frames_path):
-            break
-        video_timestep += step_size
+            # Extract the frames from the n-th video chunk
+            if os.path.isdir(frames_path):
+                rmtree(frames_path)
+            extract_ok = ffmpeg.extract_frames(
+                params['source'], frames_path,
+                [args['scale'], -1] if args['scale'] is not None else None,
+                video_timestep, step_size, extension=args['frame_quality'])
+            if not extract_ok: # this should never happen
+                exit(1)
+            if not os.listdir(frames_path):
+                break
+            video_timestep += step_size
 
-        # Inference pass on the n-th video chunk
-        process_frames(frames_path, params['model_path'] if not chunks_paths else None) # avoid reloading the model
+            # Inference pass on the n-th video chunk
+            process_frames(frames_path, session)
 
-        # sort the frames by alternating the original and the interpolated
-        LOG('Preparing generated frames')
-        frames = os.listdir(frames_path)        
-        frames.sort(key=frames_name_comparer)
+            # sort the frames by alternating the original and the interpolated
+            LOG('Preparing generated frames')
+            frames = os.listdir(frames_path)        
+            frames.sort(key=frames_name_comparer)
 
-        # duplicate the last frame (no interpolation available)
-        copy_filename = 'f{}_{}'.format(re.findall('([0-9]+)', frames[-1])[0], frames[-1][-4:])
-        copyfile('{}\\{}'.format(frames_path, frames[-1]), '{}\\{}'.format(frames_path, copy_filename))
-        frames += [copy_filename]
-        INFO('{} total frame(s) to encode'.format(len(frames)))
+            # duplicate the last frame (no interpolation available)
+            copy_filename = 'f{}_{}'.format(re.findall('([0-9]+)', frames[-1])[0], frames[-1][-4:])
+            copyfile('{}\\{}'.format(frames_path, frames[-1]), '{}\\{}'.format(frames_path, copy_filename))
+            frames += [copy_filename]
+            INFO('{} total frame(s) to encode'.format(len(frames)))
 
-        # rename the source frames to encode
-        for i in range(len(frames), 0, -1):
-            source = '{}\\{}'.format(frames_path, frames[i - 1])
-            destination = '{}\\f{:03d}.{}'.format(frames_path, i, params['frame_quality'])
-            os.rename(source, destination)
+            # rename the source frames to encode
+            for i in range(len(frames), 0, -1):
+                source = '{}\\{}'.format(frames_path, frames[i - 1])
+                destination = '{}\\f{:03d}.{}'.format(frames_path, i, params['frame_quality'])
+                os.rename(source, destination)
 
-        # encode the interpolated video
-        LOG('Encoding output video')
-        chunk_path = os.path.join(args['working_dir'], '_{}.mp4'.format(chunk_timestep += 1))
-        ffmpeg.create_video('{}\\f%03d.{}'.format(frames_path, params['frame_quality']), chunk_path, params['encoder'], params['crf'], params['preset'])
-        chunks_paths += [chunk_path]
-        chunk_timestep += 1
+            # encode the interpolated video
+            LOG('Encoding output video')
+            chunk_path = os.path.join(args['working_dir'], '_{}.mp4'.format(chunk_timestep))
+            ffmpeg.create_video('{}\\f%03d.{}'.format(frames_path, params['frame_quality']), chunk_path, params['encoder'], params['crf'], params['preset'])
+            chunks_paths += [chunk_path]
+            chunk_timestep += 1
 
     # prepare the list file
     list_path = os.path.join(args['working_dir'], 'list.txt')
@@ -81,6 +82,7 @@ def convert(params):
     
     # create the final resampled video
     ffmpeg.concat_videos(list_path, args['source'], args['output'])
+    rmtree(args['working_dir']) # cleanup
 
 if __name__ == '__main__':
 

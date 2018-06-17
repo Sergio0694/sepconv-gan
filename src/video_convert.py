@@ -28,7 +28,7 @@ def convert(params):
 
     # Loop until all video chunks have been created
     frames_path = os.path.join(args['working_dir'], 'frames')
-    chunk_timestep, video_timestep, step_size = 1, 0, args['temp_buffer_lenght'] * 20
+    chunk_timestep, video_timestep, step_size = 1, 0, args['temp_buffer_lenght'] * 60
     chunks_paths = []
     with open_session(params['model_path'], frames_path) as session:
         while True:

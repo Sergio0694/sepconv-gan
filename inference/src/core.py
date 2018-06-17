@@ -78,7 +78,7 @@ def convert(args):
                 os.rename(source, destination)
 
             # encode the interpolated video
-            LOG('Encoding output video')
+            LOG('Encoding video chunk #{}'.format(video_timestep // step_size))
             chunk_path = os.path.join(args['working_dir'], '_{}.mp4'.format(chunk_timestep))
             ffmpeg.create_video('{}\\f%03d.{}'.format(frames_path, args['frame_quality']), chunk_path, args['encoder'], args['crf'], args['preset'])
             chunks_paths += [chunk_path]

@@ -40,7 +40,7 @@ def extract_frames(video_path, output_folder, scale=None, start=0, duration=60, 
     args = [
         'ffmpeg',
         '-i', video_path,
-        '-to', str(duration), # -ss resets the timestep to target start time
+        '-to', str(duration),   # -ss resets the timestep to target start time
         '-q:v', '1',
         '-qmin', '1',
         '-qmax', '1',
@@ -51,13 +51,14 @@ def extract_frames(video_path, output_folder, scale=None, start=0, duration=60, 
 
     # optional start time
     if start > 0:
-        args.insert(1, '-ss')
+        args.insert(1, '-ss')   # insert as first argument
         args.insert(2, str(start))
 
     # optional rescaling
     if scale is not None:
-        args.insert(4, '-vf')
-        args.insert(5, 'scale={}:{}'.format(scale[0], scale[1]))
+        index = args.index('-to') + 2   # insert after the -to argument
+        args.insert(index, '-vf')
+        args.insert(index + 1, 'scale={}:{}'.format(scale[0], scale[1]))
 
     if timeout:
         try:

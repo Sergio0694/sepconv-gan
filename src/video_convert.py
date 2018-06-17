@@ -28,23 +28,23 @@ def convert(params):
 
     # Loop until all video chunks have been created
     frames_path = os.path.join(args['working_dir'], 'frames')
-    i, timestep, step_size = 0, 0, args['temp_buffer_lenght'] * 60
+    chunk_timestep, video_timestep, step_size = 1, 0, args['temp_buffer_lenght'] * 20
     chunks_paths = []
     while True:
-        LOG('Converting {} to {}'.format(format_duration(timestep), format_duration(min(timestep + step_size, duration))))
+        LOG('Converting {} to {}'.format(format_duration(video_timestep), format_duration(min(video_timestep + step_size, duration))))
 
         # Extract the frames from the n-th video chunk
         if os.path.isdir(frames_path):
             rmtree(frames_path)
-        formatted_frames_path = ffmpeg.extract_frames(
+        extract_ok = ffmpeg.extract_frames(
             params['source'], frames_path,
             [args['scale'], -1] if args['scale'] is not None else None,
-            timestep, step_size, extension=args['frame_quality'])
-        if not formatted_frames_path: # this should never happen
+            video_timestep, step_size, extension=args['frame_quality'])
+        if not extract_ok: # this should never happen
             exit(1)
         if not os.listdir(frames_path):
             break
-        timestep += step_size
+        video_timestep += step_size
 
         # Inference pass on the n-th video chunk
         process_frames(frames_path, params['model_path'] if not chunks_paths else None) # avoid reloading the model
@@ -68,10 +68,10 @@ def convert(params):
 
         # encode the interpolated video
         LOG('Encoding output video')
-        i += 1 # so that i starts at 1
-        chunk_path = os.path.join(args['working_dir'], '_{}.mp4'.format(i))
-        ffmpeg.create_video(formatted_frames_path, chunk_path, params['encoder'], params['crf'], params['preset'])
+        chunk_path = os.path.join(args['working_dir'], '_{}.mp4'.format(chunk_timestep += 1))
+        ffmpeg.create_video('{}\\f%03d.{}'.format(frames_path, params['frame_quality']), chunk_path, params['encoder'], params['crf'], params['preset'])
         chunks_paths += [chunk_path]
+        chunk_timestep += 1
 
     # prepare the list file
     list_path = os.path.join(args['working_dir'], 'list.txt')

@@ -3,8 +3,8 @@ from os import listdir
 from time import time
 import cv2
 import tensorflow as tf
-import dataset_loader
-from logger import LOG, INFO, BAR, RESET_LINE
+import src.dataset_loader as dataset
+from src.logger import LOG, INFO, BAR, RESET_LINE
 
 PROGRESS_BAR_LENGTH = 20
 
@@ -40,7 +40,7 @@ def open_session(model_path, dataset_path):
     saver.restore(session, tf.train.latest_checkpoint(model_path))
 
     # setup the input pipeline
-    pipeline = dataset_loader.setup_pipeline(dataset_path)
+    pipeline = dataset.setup_pipeline(dataset_path)
     inference_iterator = pipeline.make_initializable_iterator()     
     tf.add_to_collection('inference', inference_iterator)
     sample_tensor = tf.squeeze(inference_iterator.get_next(), axis=0)
@@ -52,7 +52,7 @@ def process_frames(working_path, session):
     
     # load the inference raw data
     LOG('Preparing samples')
-    groups = dataset_loader.load_samples(working_path, 1)
+    groups = dataset.load_samples(working_path, 1)
     previous_idx = len(groups[0]) // 2 - 1
     extension = groups[0][0][-4:] # same image format as the input
     INFO('{} sample(s) to process'.format(len(groups)))

@@ -1,9 +1,9 @@
 import os
 import re
 from shutil import copyfile, rmtree
-import ffmpeg_helper as ffmpeg
-from logger import LOG, INFO
-from inference import process_frames, open_session
+import src.ffmpeg_helper as ffmpeg
+from src.logger import LOG, INFO
+from src.inference import process_frames, open_session
 
 def frames_name_comparer(name):
     '''Compares two filenames and returns a tuple indicating

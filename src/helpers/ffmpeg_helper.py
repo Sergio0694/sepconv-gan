@@ -20,7 +20,6 @@ def extract_frames(video_path, output_folder, scale=None, start=0, duration=60, 
             and (scale[1] >= 240 or scale[1] == -1) and not (scale[0] == -1 and scale[1] == -1))
 
     Path(output_folder).mkdir(exist_ok=True)
-    formatted_frames_path = '{}\\{}%03d.{}'.format(output_folder, suffix, extension)
     args = [
         'ffmpeg',
         '-i', video_path,
@@ -30,12 +29,12 @@ def extract_frames(video_path, output_folder, scale=None, start=0, duration=60, 
         '-qmax', '1',
         '-pix_fmt', 'rgb24',
         '-v', 'quiet',
-        formatted_frames_path
+        '{}\\{}%03d.{}'.format(output_folder, suffix, extension)
     ]
 
     # optional start time
     if start > 0:
-        args.inser(1, '-ss')
+        args.insert(1, '-ss')
         args.insert(2, str(start))
 
     # optional rescaling
@@ -45,9 +44,9 @@ def extract_frames(video_path, output_folder, scale=None, start=0, duration=60, 
 
     try:
         call(args, timeout=10)
-        return formatted_frames_path
+        return True
     except TimeoutExpired:
-        return None
+        return False
 
 def get_video_duration(video_path):
     '''Returns the duration of the video specified by the given path, in seconds.

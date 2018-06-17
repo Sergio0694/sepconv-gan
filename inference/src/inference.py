@@ -8,14 +8,21 @@ from logger import LOG, INFO, BAR, RESET_LINE
 
 PROGRESS_BAR_LENGTH = 20
 
-def save_frame(queue):
+def save_frame(queue, extension):
     '''Saves a new frame in the background.'''
 
     while True:
         task = queue.get()
         if task is None:
             break
-        cv2.imwrite(task[0], task[1][0], [int(cv2.IMWRITE_JPEG_QUALITY), 100])
+
+        # save frame in the correct format
+        if extension == 'jpg':
+            cv2.imwrite(task[0], task[1][0], [int(cv2.IMWRITE_JPEG_QUALITY), 100])
+        elif extension == 'png':
+            cv2.imwrite(task[0], task[1][0], [int(cv2.IMWRITE_PNG_COMPRESSION), 0])
+        else:
+            cv2.imwrite(task[0], task[1][0]) # lossless .bmp image
 
 def open_session(model_path, dataset_path):
     '''Loads a saved moden and opens a session for the inference pass.
@@ -52,7 +59,7 @@ def process_frames(working_path, session):
 
     # setup the background worked
     frames_queue = Queue()
-    worker = Process(target=save_frame, args=[frames_queue])
+    worker = Process(target=save_frame, args=[frames_queue, extension])
     worker.start()
 
     # initialization

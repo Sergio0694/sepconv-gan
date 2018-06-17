@@ -96,7 +96,7 @@ def concat_videos(list_path, original_path, output_path):
 
     list_path(str) -- the path of the txt file with the list of video chunks
     origina-path(str) -- the path of the original video, to use to get the audio track
-    output_path(str) -- the path of the output video to create
+    output_path(str) -- the path of the output video to create'''
 
     call([
         'ffmpeg',

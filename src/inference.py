@@ -1,3 +1,4 @@
+from multiprocessing import Process, Queue
 from os import listdir
 from time import time
 import cv2
@@ -9,6 +10,15 @@ from helpers.logger import LOG, INFO, BAR, RESET_LINE
 
 PROGRESS_BAR_LENGTH = 20
 
+def save_frame(queue):
+    '''Saves a new frame in the background.'''
+
+    while True:
+        task = queue.get()
+        if task is None:
+            break
+        cv2.imwrite(task[0], task[1][0], [int(cv2.IMWRITE_JPEG_QUALITY), 100])
+
 def process_frames(working_path, model_path=None):
     
     # load the inference raw data
@@ -17,6 +27,11 @@ def process_frames(working_path, model_path=None):
     previous_idx = len(groups[0]) // 2 - 1
     extension = groups[0][0][-4:] # same image format as the input
     INFO('{} sample(s) to process'.format(len(groups)))
+
+    # setup the background worked
+    frames_queue = Queue()
+    worker = Process(target=save_frame, args=[frames_queue])
+    worker.start()
 
     # restore the model
     with tf.Session() as session:
@@ -48,7 +63,8 @@ def process_frames(working_path, model_path=None):
 
             # inference
             prediction = session.run(yHat, feed_dict={x: frames})
-            cv2.imwrite('{}\\{}_{}'.format(working_path, filename, extension), prediction[0], [int(cv2.IMWRITE_JPEG_QUALITY), 100])
+            frame_path = '{}\\{}_{}'.format(working_path, filename, extension)
+            frames_queue.put((frame_path, prediction))
 
             # update the UI
             progress = (i * PROGRESS_BAR_LENGTH) // len(groups)
@@ -56,4 +72,9 @@ def process_frames(working_path, model_path=None):
                 steps = progress
                 BAR(steps, PROGRESS_BAR_LENGTH, ' | {0:.3f} fps'.format((i + 1) / (time() - start_seconds)))
     RESET_LINE(True)
+
+    # wait for the background thread
+    queue.put(None)
+    worker.join()
+    queue.close()
     LOG('Inference completed')

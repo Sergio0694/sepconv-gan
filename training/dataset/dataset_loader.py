@@ -22,13 +22,15 @@ def load_train(path, size, window):
     assert size > 1     # you don't say?
 
     groups, _, pipeline = load_core(path, window)
-    return pipeline \
+    dataset = pipeline \
         .shuffle(len(groups), reshuffle_each_iteration=True) \
         .map(lambda x, y: tf.py_func(tf_load_images, inp=[x, y, path], Tout=[tf.float32, tf.float32]), num_parallel_calls=cpu_count()) \
         .filter(lambda x, y: tf.py_func(tf_ensure_difference_middle_threshold, inp=[x, y], Tout=[tf.bool])) \
         .map(lambda x, y: tf.py_func(tf_preprocess_train_images, inp=[x, y], Tout=[tf.float32, tf.float32]), num_parallel_calls=cpu_count()) \
-        .filter(lambda x, y: tf.py_func(tf_ensure_difference_min_threshold, inp=[x, y], Tout=[tf.bool])) \
-        .map(lambda x, y: tf.py_func(tf_embed_flow_estimation, inp=[x, y], Tout=[tf.float32, tf.float32]), num_parallel_calls=cpu_count()) \
+        .filter(lambda x, y: tf.py_func(tf_ensure_difference_min_threshold, inp=[x, y], Tout=[tf.bool]))
+    if INCLUDE_FLOW:
+        dataset = dataset.map(lambda x, y: tf.py_func(tf_embed_flow_estimation, inp=[x, y], Tout=[tf.float32, tf.float32]), num_parallel_calls=cpu_count())
+    return dataset \
         .repeat() \
         .batch(size) \
         .prefetch(1)
@@ -53,8 +55,10 @@ def load_test(path, window):
             ]
             INFO('{} ---> {}, e={}'.format(s[0], s[1], errors))
 
-    return pipeline \
-        .map(lambda x, y: tf.py_func(tf_load_images, inp=[x, y, path], Tout=[tf.float32, tf.float32]), num_parallel_calls=cpu_count()) \
+    dataset = pipeline.map(lambda x, y: tf.py_func(tf_load_images, inp=[x, y, path], Tout=[tf.float32, tf.float32]), num_parallel_calls=cpu_count())
+    if INCLUDE_FLOW:
+        dataset = dataset.map(lambda x, y: tf.py_func(tf_embed_flow_estimation, inp=[x, y], Tout=[tf.float32, tf.float32]), num_parallel_calls=cpu_count())
+    return dataset \
         .batch(1) \
         .prefetch(1) # only process one sample at a time to avoid OOM issues in inference
 
@@ -184,7 +188,7 @@ def tf_embed_flow_estimation(samples, label):
     # add the optical flow data for each frames pair
     x = []
     for pair in zip(samples, samples[1:]):
-	    x += [pair[0], get_optical_flow_rgb(pair[0], pair[1], OpticalFlowType.DIRECTIONAL)]
+        x += [pair[0], get_optical_flow_rgb(pair[0], pair[1], OpticalFlowType.DIRECTIONAL)]
     x += [samples[-1]]
 
     # return the final inputs

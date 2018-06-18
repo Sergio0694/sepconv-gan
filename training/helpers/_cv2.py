@@ -15,8 +15,7 @@ def get_optical_flow_rgb(before, after, flow_type):
     
     if flow_type == OpticalFlowType.DIRECTIONAL:
         return get_rgb_flow(before, before_g, after_g)
-    else:
-        return get_rgb_flow(before, before_g, after_g), get_rgb_flow(before, after_g, before_g)
+    return get_rgb_flow(before, before_g, after_g), get_rgb_flow(before, after_g, before_g)
 
 def get_rgb_flow(original, before, after):
     '''Reads two grayscale images and returns the RGB optical flow between them.'''

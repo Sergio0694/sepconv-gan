@@ -1,3 +1,4 @@
+from __MACRO__ import *
 import tensorflow as tf
 
 def stack_images(x):
@@ -9,7 +10,7 @@ def stack_images(x):
     with tf.name_scope('frames'):
         x_t = tf.transpose(x, [0, 2, 3, 1, 4])
         x_shape = tf.shape(x_t, name='batch_shape')
-        return tf.reshape(x_t, [x_shape[0], x_shape[1], x_shape[2], 6], name='frames')
+        return tf.reshape(x_t, [x_shape[0], x_shape[1], x_shape[2], 9 if INCLUDE_FLOW else 6], name='frames')
 
 class DynamicRate(object):
     '''A class that produces learning rates as specified from the 

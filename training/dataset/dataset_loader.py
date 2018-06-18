@@ -7,6 +7,7 @@ import numpy as np
 from __MACRO__ import *
 from helpers.logger import LOG, INFO
 from helpers.debug_tools import calculate_image_difference
+from helpers._cv2 import get_optical_flow_rgb, OpticalFlowType
 
 def load_train(path, size, window):
     '''Prepares the input pipeline to train the model. Each batch is made up of 
@@ -27,6 +28,7 @@ def load_train(path, size, window):
         .filter(lambda x, y: tf.py_func(tf_ensure_difference_middle_threshold, inp=[x, y], Tout=[tf.bool])) \
         .map(lambda x, y: tf.py_func(tf_preprocess_train_images, inp=[x, y], Tout=[tf.float32, tf.float32]), num_parallel_calls=cpu_count()) \
         .filter(lambda x, y: tf.py_func(tf_ensure_difference_min_threshold, inp=[x, y], Tout=[tf.bool])) \
+        .map(lambda x, y: tf.py_func(tf_embed_flow_estimation, inp=[x, y], Tout=[tf.float32, tf.float32]), num_parallel_calls=cpu_count()) \
         .repeat() \
         .batch(size) \
         .prefetch(1)
@@ -175,6 +177,18 @@ def tf_preprocess_train_images(samples, label):
         x = np.flip(x, 0)
 
     return x, y
+
+def tf_embed_flow_estimation(samples, label):
+    '''Adds optical flow data into the input samples.'''
+
+    # add the optical flow data for each frames pair
+    x = []
+    for pair in zip(samples, samples[1:]):
+	    x += [pair[0], get_optical_flow_rgb(pair[0], pair[1], OpticalFlowType.DIRECTIONAL)]
+    x += [samples[-1]]
+
+    # return the final inputs
+    return np.array(x, np.float32, copy=False), label
 
 def tf_calculate_batch_errors(samples, label):
     '''Shared code for ensure_difference_middle_threshold and ensure_difference_min_threshold'''

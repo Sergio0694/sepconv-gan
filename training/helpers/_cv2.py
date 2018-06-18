@@ -22,11 +22,11 @@ def get_rgb_flow(original, before, after):
     '''Reads two grayscale images and returns the RGB optical flow between them.'''
 
     flow = cv2.calcOpticalFlowFarneback(before, after, None, 0.5, 3, 15, 3, 5, 1.2, 0)
-    magnitude, angle = cv2.cartToPolar(flow[:,:,0], flow[:,:,1])
+    magnitude, angle = cv2.cartToPolar(flow[:, :, 0], flow[:, :, 1])
     hsv = np.zeros_like(original)
 
-    hsv[:,:,0] = angle * 180 / np.pi / 2
-    hsv[:,:,1] = 255
-    hsv[:,:,2] = cv2.normalize(magnitude, None, 0, 255, cv2.NORM_MINMAX)
+    hsv[:, :, 0] = angle * 180 / np.pi / 2
+    hsv[:, :, 1] = 255
+    hsv[:, :, 2] = cv2.normalize(magnitude, None, 0, 255, cv2.NORM_MINMAX)
     flow_bgr = cv2.cvtColor(hsv, cv2.COLOR_HSV2BGR)
     return flow_bgr

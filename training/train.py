@@ -42,7 +42,7 @@ with graph.as_default():
     LOG('Creating model')
     x = tf.placeholder_with_default(x_train, [None, None, None, None, 3], name='x')
     with tf.variable_scope('generator', None, [x]):
-        raw_yHat = unet.get_network(x / 255.0)
+        raw_yHat = unet.get_network_v2(x / 255.0)
         yHat = raw_yHat * 255.0
 
     # discriminator setup
@@ -123,7 +123,7 @@ with tf.Session(graph=graph) as session:
                     feed_dict={eta: lr, keep_prob: 0.8})
                 writer.add_summary(summary, samples)
                 RESET_LINE()
-                LOG('#{}\tgen_own: {:.3f}\tgen_full: {:.3f}\tdisc: {:.3f}'.format(step, gen_score, gen_full_score, disc_score))
+                LOG('#{}\tgen_own: {:5.04f}, gen_full: {:5.04f}, disc: {:5.04f}'.format(step, gen_score, gen_full_score, disc_score))
 
                 # save the model
                 saver.save(session, TENSORBOARD_RUN_DIR, global_step=step, write_meta_graph=False)
@@ -151,7 +151,7 @@ with tf.Session(graph=graph) as session:
                 session.run(train_init_op)
 
                 # display additional info and progress the learning rate in use
-                INFO('{}'.format(test_score))
+                INFO('{:5.04f}'.format(test_score))
                 BAR(0, TRAINING_PROGRESS_BAR_LENGTH, ' {:.2f} sample(s)/s'.format(samples / (time() - time_start)))
                 ticks = 0
                 lr = rates.get()

@@ -21,8 +21,8 @@ with graph.as_default():
     # initialize the dataset
     LOG('Creating datasets')
     with tf.variable_scope('generator_data'):
-        train_dataset = data_loader.load_train(TRAINING_DATASET_PATH, BATCH_SIZE, 1)
-        test_dataset = data_loader.load_test(TEST_DATASET_PATH, 1)
+        train_dataset = data_loader.load_train(TRAINING_DATASET_PATH, BATCH_SIZE, IMAGES_WINDOW_SIZE)
+        test_dataset = data_loader.load_test(TEST_DATASET_PATH, IMAGES_WINDOW_SIZE)
         gen_iterator = tf.data.Iterator.from_structure(train_dataset.output_types, train_dataset.output_shapes)
         x_train, y = gen_iterator.get_next()
         train_init_op = gen_iterator.make_initializer(train_dataset)
@@ -33,6 +33,10 @@ with graph.as_default():
         disc_iterator = disc_dataset.make_one_shot_iterator()
         disc_x_next = disc_iterator.get_next()[0]
         x_true = tf.placeholder_with_default(disc_x_next, [None, TRAINING_IMAGES_SIZE, TRAINING_IMAGES_SIZE, 3], name='x_true')
+
+    # info for the inference pass
+    with tf.variable_scope('info'):
+        tf.constant(IMAGES_WINDOW_SIZE, tf.int32, name='window_size')
 
     # change this line to choose the model to train
     LOG('Creating model')

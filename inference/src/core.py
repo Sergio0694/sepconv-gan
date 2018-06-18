@@ -53,12 +53,12 @@ def convert(args):
                 LOG('Failed to extract frames')
                 rmtree(args['working_dir'])
                 exit(1)
-            if not frames:
-                break
             video_timestep += step_size
 
             # Inference pass on the n-th video chunk
             frames = os.listdir(frames_path)
+            if not frames:
+                break
             process_frames(frames_path, session)
 
             # sort the frames by alternating the original and the interpolated

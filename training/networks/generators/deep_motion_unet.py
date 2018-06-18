@@ -172,7 +172,7 @@ def get_network_v3(x):
         up_b1_conv = tf.layers.conv2d(up_concat, filters // 16, 1, activation=tf.nn.leaky_relu)
         up_b1_norm = tf.layers.batch_normalization(up_b1_conv)
 
-        up_b2_conv1 = tf.layers.conv2d(tensor, filters // 16, 1, activation=tf.nn.leaky_relu)
+        up_b2_conv1 = tf.layers.conv2d(up_concat, filters // 16, 1, activation=tf.nn.leaky_relu)
         up_b2_norm1 = tf.layers.batch_normalization(up_b2_conv1)
         up_b2_conv2 = tf.layers.conv2d(up_b2_norm1, filters // 8, 3, 1, activation=tf.nn.leaky_relu, padding='same')
         up_b2_norm2 = tf.layers.batch_normalization(up_b2_conv2)
@@ -238,4 +238,7 @@ def get_network_v3(x):
             with tf.variable_scope('upscale_4', None, [up2, norm1]):
                 up1 = upscale_block(up2, norm1, 32)
 
-            return tf.layers.separable_conv2d(up1, 3, 3, activation=tf.nn.sigmoid, padding='same')
+        with tf.variable_scope('tail', None, [up1]):
+            tail_conv = tf.layers.separable_conv2d(up1, 32, 3,activation=tf.nn.leaky_relu, padding='same')
+            tail_norm = tf.layers.batch_normalization(tail_conv)
+            return tf.layers.separable_conv2d(tail_norm, 3, 3, activation=tf.nn.sigmoid, padding='same')

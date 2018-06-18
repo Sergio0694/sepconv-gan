@@ -9,7 +9,7 @@ import dataset.dataset_loader as data_loader
 from helpers.logger import LOG, INFO, BAR, RESET_LINE
 import networks.generators.deep_motion_unet as unet
 import networks.discriminators.inception_resnet_mini as inception_mini
-from networks.dynamic_lr import DecayingRate
+from networks._tf import DecayingRate
 
 os.environ['CUDA_DEVICE_ORDER'] = 'PCI_BUS_ID'      # See issue #152
 os.environ['CUDA_VISIBLE_DEVICES'] = '0'
@@ -71,7 +71,7 @@ with graph.as_default():
                 disc_loss = -tf.reduce_mean(tf.log(disc_true) + tf.log(1.0 - disc_false))
             with tf.variable_scope('discriminator_adam', None, [disc_loss, eta, eta]):
                 with tf.control_dependencies(tf.get_collection(tf.GraphKeys.UPDATE_OPS, scope='discriminator')):
-                    disc_adam = tf.train.AdamOptimizer()
+                    disc_adam = tf.train.AdamOptimizer(0.0001)
                     disc_optimizer = disc_adam.minimize(disc_loss, var_list=tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='discriminator'))
 
     # output image
@@ -111,6 +111,7 @@ with tf.Session(graph=graph) as session:
         samples, step, ticks_old = 0, 0, 0
         time_start = time()
         lr = rates.get()
+        fetches = [gen_optimizer]
 
         while samples < TRAINING_TOTAL_SAMPLES:
             if samples // TENSORBOARD_LOG_INTERVAL > step:
@@ -154,8 +155,10 @@ with tf.Session(graph=graph) as session:
                 BAR(0, TRAINING_PROGRESS_BAR_LENGTH, ' {:.2f} sample(s)/s'.format(samples / (time() - time_start)))
                 ticks = 0
                 lr = rates.get()
+                if step == 1 and DISCRIMINATOR_SKIP_FIRST_EPOCH:
+                    fetches = [gen_optimizer, disc_optimizer]
             else:
-                session.run([gen_optimizer, disc_optimizer], feed_dict={eta: lr, keep_prob: 0.8})
+                session.run(fetches, feed_dict={eta: lr, keep_prob: 0.8})
 
             # training progress
             samples += BATCH_SIZE

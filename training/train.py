@@ -1,3 +1,4 @@
+from multiprocessing import Process, Queue
 import os
 from pathlib import Path
 from time import time
@@ -111,6 +112,22 @@ with graph.as_default():
         for v in tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='discriminator')
     ])))
 
+def save_frame(queue, name):
+    '''Saves a test frame in the background.'''
+
+    while True:
+        task = queue.get()
+        if task is None:
+            break
+
+        # save the new test frame
+        cv2.imwrite(task[0], task[1], [int(cv2.IMWRITE_PNG_COMPRESSION), 0])
+
+LOG('Background queue setup')
+frames_queue = Queue()
+worker = Process(target=save_frame, args=[frames_queue, extension])
+worker.start()
+
 # train the model
 LOG('Training starting...')
 with tf.Session(graph=graph) as session:
@@ -153,7 +170,7 @@ with tf.Session(graph=graph) as session:
                         # save the generated images to track progress
                         predictions_dir = '{}\\_{}'.format(TENSORBOARD_RUN_DIR, step)
                         Path(predictions_dir).mkdir(exist_ok=True)
-                        cv2.imwrite('{}\\{}_yHat.png'.format(predictions_dir, j), prediction[0], [int(cv2.IMWRITE_PNG_COMPRESSION), 0])
+                        frames_queue.put(('{}\\{}_yHat.png'.format(predictions_dir, j), prediction[0]))
                         j += 1
                     except tf.errors.OutOfRangeError:
                         break
@@ -181,3 +198,8 @@ with tf.Session(graph=graph) as session:
             if ticks > 0 and ticks != ticks_old:
                 ticks_old = ticks
                 BAR(ticks, TRAINING_PROGRESS_BAR_LENGTH, ' {:.2f} sample(s)/s'.format(samples / (time() - time_start)))
+
+# close queue
+frames_queue.put(None)
+worker.join()
+frames_queue.close()

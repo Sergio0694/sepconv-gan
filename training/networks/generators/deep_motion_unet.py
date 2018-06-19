@@ -1,5 +1,4 @@
 import tensorflow as tf
-import networks._tf as _tf
 
 def get_network_v1(x):
     '''Generates a U-Net CNN to perform image interpolation.
@@ -164,12 +163,9 @@ def get_network_v2_1(x):
 
     with tf.variable_scope('unet', None, [x]):
 
-        with tf.variable_scope('reshape', None, [x]):
-            x_stack = _tf.stack_images(x)
-
-        with tf.variable_scope('encoder', None, [x_stack]):
-            with tf.variable_scope('downscale_1', None, [x_stack]):
-                norm1, pool1 = downscale_block(x_stack, 32)
+        with tf.variable_scope('encoder', None, [x]):
+            with tf.variable_scope('downscale_1', None, [x]):
+                norm1, pool1 = downscale_block(x, 32)
 
             with tf.variable_scope('downscale_2', None, [pool1]):
                 norm2, pool2 = downscale_block(pool1, 64)

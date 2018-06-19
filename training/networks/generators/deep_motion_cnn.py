@@ -39,7 +39,7 @@ def get_network_v2(x):
     '''
 
     with tf.variable_scope('CNN_v2', None, [x]):
-        with tf.variable_scope('encoderr', None, [x]):
+        with tf.variable_scope('encoder', None, [x]):
             conv1_a = tf.layers.conv2d(x, 32, 3, activation=tf.nn.relu, padding='same')
             conv1_b = tf.layers.conv2d(conv1_a, 32, 3, activation=tf.nn.relu, padding='same')
             pool1 = tf.layers.max_pooling2d(conv1_b, 2, 2, padding='same')
@@ -117,7 +117,7 @@ def get_network_v3(x):
 
             # [batch, h / 4, w / 4, 192] >> (h / 2, w / 2)
             up1_s = tf.shape(norm2)
-            up1 = tf.image.resize_nearest_neighbor(norm4_c, [up1_s[1], up1_s[2]])
+            up1 = tf.image.resize_bilinear(norm4_c, [up1_s[1], up1_s[2]])
             norm2_res = tf.layers.conv2d(norm2, 64, 1, activation=tf.nn.relu)
             conv5_a = tf.layers.conv2d(up1, 64, 3, activation=tf.nn.relu, padding='same') + norm2_res
             norm5_a = tf.layers.batch_normalization(conv5_a)
@@ -126,7 +126,7 @@ def get_network_v3(x):
 
             # [batch, h / 2, w / 2, 64] >> (h, w)
             up2_s = tf.shape(x)
-            up2 = tf.image.resize_nearest_neighbor(norm5_b, [up2_s[1], up2_s[2]])
+            up2 = tf.image.resize_bilinear(norm5_b, [up2_s[1], up2_s[2]])
             conv6_a = tf.layers.conv2d(up2, 32, 3, activation=tf.nn.relu, padding='same') + norm1_a
             norm6_a = tf.layers.batch_normalization(conv6_a)
             conv6_b = tf.layers.conv2d(norm6_a, 32, 3, activation=tf.nn.relu, padding='same')

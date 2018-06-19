@@ -126,7 +126,7 @@ with tf.Session(graph=graph) as session:
                     feed_dict={eta: lr, keep_prob: 0.8})
                 writer.add_summary(summary, samples)
                 RESET_LINE()
-                LOG('#{}\tgen_own: {:5.04f}, gen_full: {:5.04f}, disc: {:5.04f}'.format(step, gen_score, gen_full_score, disc_score))
+                LOG('#{}\tgen_own: {:12.04f}, gen_full: {:12.04f}, disc: {:12.04f}'.format(step, gen_score, gen_full_score, disc_score))
 
                 # save the model
                 saver.save(session, TENSORBOARD_RUN_DIR, global_step=step, write_meta_graph=False)
@@ -142,7 +142,7 @@ with tf.Session(graph=graph) as session:
                         # save the generated images to track progress
                         predictions_dir = '{}\\_{}'.format(TENSORBOARD_RUN_DIR, step)
                         Path(predictions_dir).mkdir(exist_ok=True)
-                        cv2.imwrite('{}\\{}_yHat.jpg'.format(predictions_dir, j), prediction[0], [int(cv2.IMWRITE_JPEG_QUALITY), 100])
+                        cv2.imwrite('{}\\{}_yHat.png'.format(predictions_dir, j), prediction[0], [int(cv2.IMWRITE_PNG_COMPRESSION), 0])
                         j += 1
                     except tf.errors.OutOfRangeError:
                         break

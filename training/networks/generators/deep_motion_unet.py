@@ -29,12 +29,9 @@ def get_network_v1(x):
 
     with tf.variable_scope('unet', None, [x]):
 
-        with tf.variable_scope('reshape', None, [x]):
-            x_stack = _tf.stack_images(x)
-
-        with tf.variable_scope('encoder', None, [x_stack]):
-            with tf.variable_scope('downscale_1', None, [x_stack]):
-                norm1, pool1 = downscale_block(x_stack, 32)
+        with tf.variable_scope('encoder', None, [x]):
+            with tf.variable_scope('downscale_1', None, [x]):
+                norm1, pool1 = downscale_block(x, 32)
 
             with tf.variable_scope('downscale_2', None, [pool1]):
                 norm2, pool2 = downscale_block(pool1, 64)
@@ -97,12 +94,9 @@ def get_network_v2(x):
 
     with tf.variable_scope('unet', None, [x]):
 
-        with tf.variable_scope('reshape', None, [x]):
-            x_stack = _tf.stack_images(x)
-
-        with tf.variable_scope('encoder', None, [x_stack]):
-            with tf.variable_scope('downscale_1', None, [x_stack]):
-                norm1, pool1 = downscale_block(x_stack, 32)
+        with tf.variable_scope('encoder', None, [x]):
+            with tf.variable_scope('downscale_1', None, [x]):
+                norm1, pool1 = downscale_block(x, 48)
 
             with tf.variable_scope('downscale_2', None, [pool1]):
                 norm2, pool2 = downscale_block(pool1, 64)
@@ -187,11 +181,8 @@ def get_network_v3(x):
 
     with tf.variable_scope('unet', None, [x]):
 
-        with tf.variable_scope('reshape', None, [x]):
-            x_stack = _tf.stack_images(x)
-
-        with tf.variable_scope('stem', None, [x_stack]):
-            stem_conv1 = tf.layers.conv2d(x_stack, 32, 3, activation=tf.nn.leaky_relu, padding='same')
+        with tf.variable_scope('stem', None, [x]):
+            stem_conv1 = tf.layers.conv2d(x, 32, 3, activation=tf.nn.leaky_relu, padding='same')
             stem_norm1 = tf.layers.batch_normalization(stem_conv1)
             stem_conv2 = tf.layers.conv2d(stem_norm1, 64, 3, activation=tf.nn.leaky_relu, padding='same')
             stem_norm2 = tf.layers.batch_normalization(stem_conv2)

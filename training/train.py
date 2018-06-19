@@ -40,7 +40,11 @@ with graph.as_default():
 
     # change this line to choose the model to train
     LOG('Creating model')
-    x = tf.placeholder_with_default(x_train, [None, None, None, None, 3], name='x')
+    x = tf.placeholder_with_default(
+        x_train,
+        [None, 3, None, None, None, INPUT_CHANNELS] if IMAGES_WINDOW_SIZE == 1
+        else [None, None, None, INPUT_CHANNELS],
+        name='x')
     with tf.variable_scope('generator', None, [x]):
         raw_yHat = unet.get_network_v2(x / 255.0)
         yHat = raw_yHat * 255.0

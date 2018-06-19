@@ -7,7 +7,7 @@ import numpy as np
 from __MACRO__ import *
 from helpers.logger import LOG, INFO
 from helpers.debug_tools import calculate_image_difference
-from helpers._cv2 import get_optical_flow_rgb, OpticalFlowType
+from helpers._cv2 import get_optical_flow_from_rgb, OpticalFlowType
 
 def load_train(path, size, window):
     '''Prepares the input pipeline to train the model. Each batch is made up of 
@@ -22,15 +22,13 @@ def load_train(path, size, window):
     assert size > 1     # you don't say?
 
     groups, _, pipeline = load_core(path, window)
-    dataset = pipeline \
+    return pipeline \
         .shuffle(len(groups), reshuffle_each_iteration=True) \
         .map(lambda x, y: tf.py_func(tf_load_images, inp=[x, y, path], Tout=[tf.float32, tf.float32]), num_parallel_calls=cpu_count()) \
         .filter(lambda x, y: tf.py_func(tf_ensure_difference_middle_threshold, inp=[x, y], Tout=[tf.bool])) \
         .map(lambda x, y: tf.py_func(tf_preprocess_train_images, inp=[x, y], Tout=[tf.float32, tf.float32]), num_parallel_calls=cpu_count()) \
-        .filter(lambda x, y: tf.py_func(tf_ensure_difference_min_threshold, inp=[x, y], Tout=[tf.bool]))
-    if INCLUDE_FLOW:
-        dataset = dataset.map(lambda x, y: tf.py_func(tf_embed_flow_estimation, inp=[x, y], Tout=[tf.float32, tf.float32]), num_parallel_calls=cpu_count())
-    return dataset \
+        .filter(lambda x, y: tf.py_func(tf_ensure_difference_min_threshold, inp=[x, y], Tout=[tf.bool])) \
+        .map(lambda x, y: tf.py_func(tf_final_input_transform, inp=[x, y], Tout=[tf.float32, tf.float32]), num_parallel_calls=cpu_count()) \
         .repeat() \
         .batch(size) \
         .prefetch(1)
@@ -55,10 +53,9 @@ def load_test(path, window):
             ]
             INFO('{} ---> {}, e={}'.format(s[0], s[1], errors))
 
-    dataset = pipeline.map(lambda x, y: tf.py_func(tf_load_images, inp=[x, y, path], Tout=[tf.float32, tf.float32]), num_parallel_calls=cpu_count())
-    if INCLUDE_FLOW:
-        dataset = dataset.map(lambda x, y: tf.py_func(tf_embed_flow_estimation, inp=[x, y], Tout=[tf.float32, tf.float32]), num_parallel_calls=cpu_count())
-    return dataset \
+    return pipeline \
+        .map(lambda x, y: tf.py_func(tf_load_images, inp=[x, y, path], Tout=[tf.float32, tf.float32]), num_parallel_calls=cpu_count()) \
+        .map(lambda x, y: tf.py_func(tf_final_input_transform, inp=[x, y], Tout=[tf.float32, tf.float32]), num_parallel_calls=cpu_count()) \
         .batch(1) \
         .prefetch(1) # only process one sample at a time to avoid OOM issues in inference
 
@@ -182,17 +179,36 @@ def tf_preprocess_train_images(samples, label):
 
     return x, y
 
+def tf_final_input_transform(samples, label):
+    '''Reshapes the inputs as needed, and appends the flow estimation, if requested.'''
+
+    if IMAGES_WINDOW_SIZE == 1:
+
+        # here the inputs are [batch, 2, h, w, 3]
+        samples_t = np.transpose(samples, [0, 2, 3, 1, 4])
+        samples_r = np.reshape(samples_t, [samples_t.shape[0], samples_t.shape[1], samples_t.shape[2], -1])
+
+        if INCLUDE_FLOW:
+
+            angle, strength = get_optical_flow_from_rgb(samples[0], samples[1], OpticalFlowType.DIRECTIONAL)
+            return np.concatenate([samples_r, angle, strength], -1), label
+        else:
+            return samples_r, label
+
+    elif IMAGES_WINDOW_SIZE == 2:
+        raise NotImplementedError('Window size not supported')
+    else:
+        raise ValueError('Invalid window size')
+
 def tf_embed_flow_estimation(samples, label):
     '''Adds optical flow data into the input samples.'''
 
     # add the optical flow data for each frames pair
-    x = []
-    for pair in zip(samples, samples[1:]):
-        x += [pair[0], get_optical_flow_rgb(pair[0], pair[1], OpticalFlowType.DIRECTIONAL)]
-    x += [samples[-1]]
-
-    # return the final inputs
-    return np.array(x, np.float32, copy=False), label
+    if IMAGES_WINDOW_SIZE == 1:
+        angle, strength = get_optical_flow_from_rgb(samples[0], samples[1], OpticalFlowType.DIRECTIONAL)
+        return np.concatenate([samples[0], np.expand_dims(angle, -1), np.expand_dims(strength, -1), samples[1]], -1), label
+    else:
+        raise NotImplementedError('Unsupported operation')
 
 def tf_calculate_batch_errors(samples, label):
     '''Shared code for ensure_difference_middle_threshold and ensure_difference_min_threshold'''

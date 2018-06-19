@@ -1,17 +1,6 @@
 from __MACRO__ import *
 import tensorflow as tf
 
-def stack_images(x):
-    '''Stacks n images over the channels dimension.
-
-    x(tf.tensor<tf.float32>) -- the input [batch, images, h, w, channels] tensor
-    '''
-
-    with tf.name_scope('frames'):
-        x_t = tf.transpose(x, [0, 2, 3, 1, 4])
-        x_shape = tf.shape(x_t, name='batch_shape')
-        return tf.reshape(x_t, [x_shape[0], x_shape[1], x_shape[2], 9 if INCLUDE_FLOW else 6], name='frames')
-
 class DynamicRate(object):
     '''A class that produces learning rates as specified from the 
     initial mapping of custom rates to training epochs.

@@ -51,7 +51,7 @@ def get_network_v2(x):
             conv3_a = tf.layers.conv2d(pool2, 128, 3, activation=tf.nn.relu, padding='same')
             conv3_b = tf.layers.conv2d(conv3_a, 128, 3, activation=tf.nn.relu, padding='same') + conv3_a
         
-        with tf.variable_scope('decoder', None, [conv3_b, conv2_b, conv1_b])
+        with tf.variable_scope('decoder', None, [conv3_b, conv2_b, conv1_b]):
             up1_s = tf.shape(conv2_b)
             up1 = tf.image.resize_nearest_neighbor(conv3_b, [up1_s[1], up1_s[2]])
 

@@ -112,7 +112,7 @@ with graph.as_default():
         for v in tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='discriminator')
     ])))
 
-def save_frame(queue, name):
+def save_frame(queue):
     '''Saves a test frame in the background.'''
 
     while True:
@@ -125,7 +125,7 @@ def save_frame(queue, name):
 
 LOG('Background queue setup')
 frames_queue = Queue()
-worker = Process(target=save_frame, args=[frames_queue, extension])
+worker = Process(target=save_frame, args=[frames_queue])
 worker.start()
 
 # train the model

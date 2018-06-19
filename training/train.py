@@ -72,7 +72,7 @@ with graph.as_default():
                 disc_loss = -tf.reduce_mean(tf.log(disc_true) + tf.log(1.0 - disc_false))
             with tf.variable_scope('discriminator_adam', None, [disc_loss, eta, eta]):
                 with tf.control_dependencies(tf.get_collection(tf.GraphKeys.UPDATE_OPS, scope='discriminator')):
-                    disc_adam = tf.train.AdamOptimizer(0.0001)
+                    disc_adam = tf.train.AdamOptimizer(DISCRIMINATOR_LR)
                     disc_optimizer = disc_adam.minimize(disc_loss, var_list=tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='discriminator')) if DISCRIMINATOR_GRADIENT_CLIP is None \
                                     else _tf.minimize_with_clipping(disc_adam, disc_loss, DISCRIMINATOR_GRADIENT_CLIP, scope='discriminator')
 
@@ -109,7 +109,7 @@ with tf.Session(graph=graph) as session:
         session.run(tf.global_variables_initializer())
         tf.train.Saver().save(session, TENSORBOARD_RUN_DIR) # store the .meta file once
         saver = tf.train.Saver(max_to_keep=MAX_MODELS_TO_KEEP)
-        rates = _tf.DecayingRate(0.00001, 0.995)
+        rates = _tf.DecayingRate(INITIAL_GENERATOR_LR, GENERATOR_LR_DECAY_RATE)
         samples, step, ticks_old = 0, 0, 0
         time_start = time()
         lr = rates.get()

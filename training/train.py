@@ -64,7 +64,7 @@ with graph.as_default():
                 gen_loss_with_NaN_check = tf.verify_tensor_all_finite(gen_loss if DISCRIMINATOR_ACTIVATION_EPOCH is not None else gen_own_loss, 'NaN found in loss :(', 'NaN_check_output_loss')
             with tf.variable_scope('generator_sgd', None, [gen_loss_with_NaN_check, eta]):
                 with tf.control_dependencies(tf.get_collection(tf.GraphKeys.UPDATE_OPS, scope='generator')):
-                    gen_sgd = tf.train.MomentumOptimizer(eta, 0.9, use_nesterov=True)
+                    gen_sgd = tf.train.AdamOptimizer(eta) if GENERATOR_ADAM_OPTIMIZER else tf.train.MomentumOptimizer(eta, 0.9, use_nesterov=True)
                     gen_optimizer = gen_sgd.minimize(gen_loss_with_NaN_check, var_list=tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='generator')) if GENERATOR_GRADIENT_CLIP is None \
                                     else _tf.minimize_with_clipping(gen_sgd, gen_loss_with_NaN_check, GENERATOR_GRADIENT_CLIP, scope='generator')
 

@@ -97,12 +97,13 @@ def run():
             uint8_img = tf.cast(yHat_proof, tf.uint8, name='uint8_img')
         
         # summaries
-        tf.summary.scalar('TRAIN_loss', gen_own_loss)
-        tf.summary.scalar('TRAIN_full_loss', gen_loss)
-        tf.summary.scalar('TRAIN_disc_loss', disc_loss)
+        tf.summary.scalar('TRAIN_loss', gen_own_loss, ['TRAIN'])
+        tf.summary.scalar('TRAIN_full_loss', gen_loss, ['TRAIN_full'])
+        tf.summary.scalar('TRAIN_disc_loss', disc_loss, ['TRAIN_full'])
         test_loss = tf.placeholder(tf.float32, name='test_loss')
         tf.summary.scalar('TEST_loss', test_loss, ['_'])
-        merged_summary = tf.summary.merge_all()
+        merged_summary_all = tf.summary.merge(['TRAIN', 'TRAIN_full'])
+        merged_summary_gen = tf.summary.merge(['TRAIN'])
 
         # model info (while inside the graph)
         INFO('{} generator variable(s)'.format(np.sum([
@@ -140,12 +141,19 @@ def run():
                     step = samples // TENSORBOARD_LOG_INTERVAL
 
                     # log to tensorboard
-                    _, _, gen_score, gen_full_score, disc_score, summary = session.run(
-                        [gen_optimizer, disc_optimizer, gen_own_loss, gen_loss, disc_loss, merged_summary],
-                        feed_dict={eta: lr, keep_prob: 0.8})
+                    if disc_optimizer in fetches:
+                        _, _, gen_score, gen_full_score, disc_score, summary = session.run(
+                            [gen_optimizer, disc_optimizer, gen_own_loss, gen_loss, disc_loss, merged_summary_all],
+                            feed_dict={eta: lr, keep_prob: 0.8})
+                        RESET_LINE()
+                        LOG('#{}\tgen_own: {:12.04f}, gen_full: {:12.04f}, disc: {:12.04f}'.format(step, gen_score, gen_full_score, disc_score))
+                    else:
+                        _, gen_score, summary = session.run(
+                            [gen_optimizer, gen_own_loss, merged_summary_gen],
+                            feed_dict={eta: lr, keep_prob: 0.8})
+                        RESET_LINE()
+                        LOG('#{}\tgen_own: {:12.04f}'.format(step, gen_score))
                     writer.add_summary(summary, samples)
-                    RESET_LINE()
-                    LOG('#{}\tgen_own: {:12.04f}, gen_full: {:12.04f}, disc: {:12.04f}'.format(step, gen_score, gen_full_score, disc_score))
 
                     # save the model
                     saver.save(session, TENSORBOARD_RUN_DIR, global_step=step, write_meta_graph=False)
@@ -173,7 +181,7 @@ def run():
                     session.run(train_init_op)
 
                     # display additional info and progress the learning rate in use
-                    INFO('{:5.04f}'.format(test_score))
+                    INFO('{:12.04f}'.format(test_score))
                     BAR(0, TRAINING_PROGRESS_BAR_LENGTH, ' {:.2f} sample(s)/s'.format(samples / (time() - time_start)))
                     ticks = 0
                     lr = rates.get()

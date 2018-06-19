@@ -3,9 +3,10 @@ import cv2
 import numpy as np
 
 class OpticalFlowEmbeddingType(Enum):
-    DIRECTIONAL = 0
-    BIDIRECTIONAL = 1
-    BIDIRECTIONAL_PREWARPED = 2
+    NONE = 0
+    DIRECTIONAL = 1
+    BIDIRECTIONAL = 2
+    BIDIRECTIONAL_PREWARPED = 3
 
 def prewarp_frame(flow, frame):
     '''Warps a frame given its optical flow data.
@@ -42,7 +43,9 @@ def get_optical_flow_from_rgb(before, after, flow_type):
     
     if flow_type == OpticalFlowType.DIRECTIONAL:
         return get_optical_flow_from_grayscale(before_g, after_g)
-    return get_optical_flow_from_grayscale(before_g, after_g), get_optical_flow_from_grayscale(after_g, before_g)
+    if flow_type == OpticalFlowType.BIDIRECTIONAL: 
+        return get_optical_flow_from_grayscale(before_g, after_g), get_optical_flow_from_grayscale(after_g, before_g)
+    raise ValueError('Invalid flow type')
 
 def get_optical_flow_from_grayscale(before, after):
     '''Reads two grayscale images and returns the RGB optical flow between them.'''

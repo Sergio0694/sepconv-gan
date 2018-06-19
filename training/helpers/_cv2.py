@@ -23,4 +23,4 @@ def get_optical_flow_from_grayscale(before, after):
     flow = cv2.calcOpticalFlowFarneback(before, after, None, 0.5, 3, 15, 3, 5, 1.2, 0)
     magnitude, angle = cv2.cartToPolar(flow[:, :, 0], flow[:, :, 1])
 
-    return np.expand_dims(angle * 180 / np.pi / 2, -1), np.expand_dims(cv2.normalize(magnitude, None, 0, 255, cv2.NORM_MINMAX), -1)
+    return np.expand_dims(angle * (255 / 180), -1), np.expand_dims(cv2.normalize(magnitude, None, 0, 255, cv2.NORM_MINMAX), -1)

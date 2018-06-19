@@ -9,7 +9,7 @@ import dataset.dataset_loader as data_loader
 from helpers.logger import LOG, INFO, BAR, RESET_LINE
 import networks.generators.deep_motion_unet as unet
 import networks.discriminators.inception_resnet_mini as inception_mini
-from networks._tf import DecayingRate
+import networks._tf as _tf
 
 os.environ['CUDA_DEVICE_ORDER'] = 'PCI_BUS_ID'      # See issue #152
 os.environ['CUDA_VISIBLE_DEVICES'] = '0'
@@ -64,7 +64,8 @@ with graph.as_default():
             with tf.variable_scope('generator_sgd', None, [gen_loss, eta]):
                 with tf.control_dependencies(tf.get_collection(tf.GraphKeys.UPDATE_OPS, scope='generator')):
                     gen_sgd = tf.train.MomentumOptimizer(eta, 0.9, use_nesterov=True)
-                    gen_optimizer = gen_sgd.minimize(gen_loss, var_list=tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='generator'))
+                    gen_optimizer = _tf.minimize_with_clipping(gen_sgd, gen_loss, scope='generator') if CLIP_GRADIENTS \
+                                    else gen_sgd.minimize(gen_loss, var_list=tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='generator'))
 
         with tf.variable_scope('discriminator_opt', None, [disc_true, disc_false, eta]):
             with tf.variable_scope('loss', None, [disc_true, disc_false]):
@@ -72,7 +73,8 @@ with graph.as_default():
             with tf.variable_scope('discriminator_adam', None, [disc_loss, eta, eta]):
                 with tf.control_dependencies(tf.get_collection(tf.GraphKeys.UPDATE_OPS, scope='discriminator')):
                     disc_adam = tf.train.AdamOptimizer(0.0001)
-                    disc_optimizer = disc_adam.minimize(disc_loss, var_list=tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='discriminator'))
+                    disc_optimizer = _tf.minimize_with_clipping(disc_adam, disc_loss, scope='discriminator') if CLIP_GRADIENTS \
+                                    else disc_adam.minimize(disc_loss, var_list=tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='discriminator'))
 
     # output image
     with tf.variable_scope('inference', None, [yHat]):
@@ -107,7 +109,7 @@ with tf.Session(graph=graph) as session:
         session.run(tf.global_variables_initializer())
         tf.train.Saver().save(session, TENSORBOARD_RUN_DIR) # store the .meta file once
         saver = tf.train.Saver(max_to_keep=MAX_MODELS_TO_KEEP)
-        rates = DecayingRate(0.00001, 0.995)
+        rates = _tf.DecayingRate(0.00001, 0.995)
         samples, step, ticks_old = 0, 0, 0
         time_start = time()
         lr = rates.get()

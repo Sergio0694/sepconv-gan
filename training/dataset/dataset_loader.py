@@ -199,16 +199,6 @@ def tf_final_input_transform(samples, label):
     else:
         raise ValueError('Invalid window size')
 
-def tf_embed_flow_estimation(samples, label):
-    '''Adds optical flow data into the input samples.'''
-
-    # add the optical flow data for each frames pair
-    if IMAGES_WINDOW_SIZE == 1:
-        angle, strength = get_optical_flow_from_rgb(samples[0], samples[1], OpticalFlowType.DIRECTIONAL)
-        return np.concatenate([samples[0], np.expand_dims(angle, -1), np.expand_dims(strength, -1), samples[1]], -1), label
-    else:
-        raise NotImplementedError('Unsupported operation')
-
 def tf_calculate_batch_errors(samples, label):
     '''Shared code for ensure_difference_middle_threshold and ensure_difference_min_threshold'''
 

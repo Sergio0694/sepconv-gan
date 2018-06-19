@@ -1,3 +1,6 @@
+from datetime import datetime
+import networks.generators.deep_motion_unet as nn
+
 # paths
 TRAINING_DATASET_PATH = 'D:\\ML\\th\\datasets\\480p'
 TEST_DATASET_PATH = 'D:\\ML\\th\\datasets\\test_1080'
@@ -14,17 +17,18 @@ INPUT_CHANNELS = 8 if INCLUDE_FLOW else 6
 
 # training parameters
 TRAINING_TOTAL_SAMPLES = 10000000
-TENSORBOARD_LOG_INTERVAL = 10000
+TENSORBOARD_LOG_INTERVAL = 1000
 BATCH_SIZE = 8
 DISCRIMINATOR_SKIP_FIRST_EPOCH = True
 GENERATOR_GRADIENT_CLIP = 5.0
 DISCRIMINATOR_GRADIENT_CLIP = 5.0
+NETWORK_BUILDER = nn.get_network_v2
 
 # debug
 VERBOSE_MODE = True
 TRAINING_PROGRESS_BAR_LENGTH = 10
 SHOW_TEST_SAMPLES_INFO_ON_LOAD = True
 TENSORBOARD_ROOT_DIR = 'tensorboard'
-MODEL_ID = 'unet_inceptionGAN_unetv2_flow'
+MODEL_ID = '{}.{}_[{}]'.format(nn.__name__, NETWORK_BUILDER.__name__, datetime.now().strftime('%d-%m-%Y_%H-%M'))
 TENSORBOARD_RUN_DIR = '{}\\{}'.format(TENSORBOARD_ROOT_DIR, MODEL_ID)
 MAX_MODELS_TO_KEEP = 1

@@ -7,7 +7,6 @@ import numpy as np
 from __MACRO__ import *
 import dataset.dataset_loader as data_loader
 from helpers.logger import LOG, INFO, BAR, RESET_LINE
-import networks.generators.deep_motion_unet as unet
 import networks.discriminators.inception_resnet_mini as inception_mini
 import networks._tf as _tf
 
@@ -42,7 +41,7 @@ with graph.as_default():
         else [None, 3, None, None, INPUT_CHANNELS],
         name='x')
     with tf.variable_scope('generator', None, [x]):
-        raw_yHat = unet.get_network_v2(x / 255.0)
+        raw_yHat = NETWORK_BUILDER(x / 255.0)
         yHat = raw_yHat * 255.0
 
     # discriminator setup

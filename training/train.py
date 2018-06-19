@@ -13,6 +13,17 @@ import networks._tf as _tf
 os.environ['CUDA_DEVICE_ORDER'] = 'PCI_BUS_ID'      # See issue #152
 os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 
+# cleanup
+LOG('Cleanup')
+leftovers = os.listdir(TENSORBOARD_ROOT_DIR)
+filename = next((x for x in leftovers if x.endswith('.meta')), None)
+if filename is not None:
+    cleanup_path = '{}\\{}'.format(TENSORBOARD_ROOT_DIR, filename[:-5])
+    for name in leftovers:
+        current_path = '{}\\{}'.format(TENSORBOARD_ROOT_DIR, name)
+        if os.path.isfile(current_path):
+            os.rename(current_path, '{}\\{}'.format(cleanup_path, name))
+
 # graph setup
 graph = tf.Graph()
 with graph.as_default():

@@ -7,7 +7,7 @@ import numpy as np
 from __MACRO__ import *
 from helpers.logger import LOG, INFO
 from helpers.debug_tools import calculate_image_difference
-from helpers._cv2 import get_optical_flow_from_rgb, get_bidirectional_prewarped_frames, OpticalFlowType
+from helpers._cv2 import get_optical_flow_from_rgb, get_bidirectional_prewarped_frames, OpticalFlowEmbeddingType
 
 def load_train(path, size, window):
     '''Prepares the input pipeline to train the model. Each batch is made up of 
@@ -188,14 +188,14 @@ def tf_final_input_transform(samples, label):
         samples_t = np.transpose(samples, [1, 2, 0, 3])
         samples_r = np.reshape(samples_t, [samples_t.shape[0], samples_t.shape[1], -1])
 
-        if FLOW_MODE == OpticalFlowType.NONE:
+        if FLOW_MODE == OpticalFlowEmbeddingType.NONE:
             return samples_r, label
-        if FLOW_MODE == OpticalFlowType.DIRECTIONAL:
-            angle, strength = get_optical_flow_from_rgb(samples[0], samples[1], OpticalFlowType.DIRECTIONAL)
+        if FLOW_MODE == OpticalFlowEmbeddingType.DIRECTIONAL:
+            angle, strength = get_optical_flow_from_rgb(samples[0], samples[1], OpticalFlowEmbeddingType.DIRECTIONAL)
             return np.concatenate([samples_r, angle, strength], -1), label
-        if FLOW_MODE == OpticalFlowType.BIDIRECTIONAL:
+        if FLOW_MODE == OpticalFlowEmbeddingType.BIDIRECTIONAL:
             raise NotImplementedError('Not supported yet')
-        if FLOW_MODE == OpticalFlowType.BIDIRECTIONAL_PREWARPED:
+        if FLOW_MODE == OpticalFlowEmbeddingType.BIDIRECTIONAL_PREWARPED:
             forward, backward = get_bidirectional_prewarped_frames(samples[0], samples[1])
             return np.concat([samples_r, forward, backward], -1)
         raise ValueError('Invalid flow mode')

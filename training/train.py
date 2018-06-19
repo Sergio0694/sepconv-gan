@@ -113,7 +113,7 @@ with tf.Session(graph=graph) as session:
         samples, step, ticks_old = 0, 0, 0
         time_start = time()
         lr = rates.get()
-        fetches = [gen_optimizer]
+        fetches = [gen_optimizer, disc_optimizer] if DISCRIMINATOR_ACTIVATION_EPOCH == 0 else [gen_optimizer]
 
         while samples < TRAINING_TOTAL_SAMPLES:
             if samples // TENSORBOARD_LOG_INTERVAL > step:
@@ -157,7 +157,7 @@ with tf.Session(graph=graph) as session:
                 BAR(0, TRAINING_PROGRESS_BAR_LENGTH, ' {:.2f} sample(s)/s'.format(samples / (time() - time_start)))
                 ticks = 0
                 lr = rates.get()
-                if step == 1 and DISCRIMINATOR_SKIP_FIRST_EPOCH:
+                if step == DISCRIMINATOR_ACTIVATION_EPOCH:
                     fetches = [gen_optimizer, disc_optimizer]
             else:
                 session.run(fetches, feed_dict={eta: lr, keep_prob: 0.8})

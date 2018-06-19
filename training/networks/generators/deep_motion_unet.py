@@ -299,6 +299,6 @@ def get_network_v3(x):
                 up1 = upscale_block(up2, norm1, 32)
 
         with tf.variable_scope('tail', None, [up1]):
-            tail_conv = tf.layers.separable_conv2d(up1, 32, 3,activation=tf.nn.leaky_relu, padding='same')
+            tail_conv = tf.layers.separable_conv2d(up1, 32, 3, activation=tf.nn.leaky_relu, padding='same')
             tail_norm = tf.layers.batch_normalization(tail_conv)
             return tf.layers.separable_conv2d(tail_norm, 3, 3, activation=tf.nn.sigmoid, padding='same')

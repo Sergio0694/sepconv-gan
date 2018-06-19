@@ -11,8 +11,7 @@ def get_network_v1(x):
     x(tf.Tensor<tf.float32>) -- the input frames
     '''
 
-    x_stack = _tf.stack_images(x)
-    conv1 = tf.layers.conv2d(x_stack, 32, 3, activation=tf.nn.relu, padding='same')
+    conv1 = tf.layers.conv2d(x, 32, 3, activation=tf.nn.relu, padding='same')
     pool1 = tf.layers.max_pooling2d(conv1, 2, 2, padding='same')
     conv2 = tf.layers.conv2d(pool1, 32, 3, activation=tf.nn.relu, padding='same')
     pool2 = tf.layers.max_pooling2d(conv2, 2, 2, padding='same')
@@ -36,8 +35,7 @@ def get_network_v2(x):
     x(tf.Tensor<tf.float32>) -- the input frames
     '''
 
-    x_stack = stack_images(x)
-    conv1_a = tf.layers.conv2d(x_stack, 32, 3, activation=tf.nn.relu, padding='same')
+    conv1_a = tf.layers.conv2d(x, 32, 3, activation=tf.nn.relu, padding='same')
     conv1_b = tf.layers.conv2d(conv1_a, 32, 3, activation=tf.nn.relu, padding='same')
     pool1 = tf.layers.max_pooling2d(conv1_b, 2, 2, padding='same')
 
@@ -69,13 +67,9 @@ def get_network_v3(x):
 
     x(tf.Tensor<tf.float32>) -- the input frames
     '''
-    
-    # [batch, images, h, w, 3]
-    x_stack = stack_images(x)
-    norm_x = tf.layers.batch_normalization(x_stack)
 
     # [batch, h, w, 3 * images]
-    conv1_a = tf.layers.conv2d(norm_x, 32, 3, activation=tf.nn.relu, padding='same')
+    conv1_a = tf.layers.conv2d(x, 32, 3, activation=tf.nn.relu, padding='same')
     conv1_b = tf.layers.conv2d(conv1_a, 32, 3, activation=tf.nn.relu, padding='same')
     conv1_c = tf.layers.conv2d(conv1_b, 32, 3, activation=tf.nn.relu, padding='same')
     norm1_a = tf.layers.batch_normalization(conv1_c)
@@ -120,7 +114,7 @@ def get_network_v3(x):
     norm5_b = tf.layers.batch_normalization(conv5_b)
 
     # [batch, h / 2, w / 2, 64] >> (h, w)
-    up2_s = tf.shape(x_stack)
+    up2_s = tf.shape(x)
     up2 = tf.image.resize_nearest_neighbor(norm5_b, [up2_s[1], up2_s[2]])
     conv6_a = tf.layers.conv2d(up2, 32, 3, activation=tf.nn.relu, padding='same') + norm1_a
     norm6_a = tf.layers.batch_normalization(conv6_a)

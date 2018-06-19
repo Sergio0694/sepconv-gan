@@ -49,7 +49,8 @@ with graph.as_default():
         with tf.name_scope('true', [x_true]):
             keep_prob, disc_true = inception_mini.get_network(x_true / 255.0)
         with tf.name_scope('false', [raw_yHat]):
-            _, disc_false = inception_mini.get_network(tf.reshape(raw_yHat, [-1, TRAINING_IMAGES_SIZE, TRAINING_IMAGES_SIZE, 3]))
+            raw_yHat.set_shape([None, TRAINING_IMAGES_SIZE, TRAINING_IMAGES_SIZE, 3])
+            _, disc_false = inception_mini.get_network(raw_yHat)
 
     # setup the loss function
     with tf.variable_scope('optimization', None, [yHat, y, disc_true, disc_false]):
@@ -60,7 +61,7 @@ with graph.as_default():
                 gen_own_loss = tf.reduce_mean((yHat - y) ** 2)
                 gen_disc_loss = -tf.reduce_mean(tf.log(disc_false))
                 gen_loss = gen_own_loss + gen_disc_loss
-                gen_loss_with_NaN_check = tf.verify_tensor_all_finite(yHat, 'NaN found in loss :(', 'NaN_check_output_loss')
+                gen_loss_with_NaN_check = tf.verify_tensor_all_finite(gen_loss if DISCRIMINATOR_ACTIVATION_EPOCH is not None else gen_own_loss, 'NaN found in loss :(', 'NaN_check_output_loss')
             with tf.variable_scope('generator_sgd', None, [gen_loss_with_NaN_check, eta]):
                 with tf.control_dependencies(tf.get_collection(tf.GraphKeys.UPDATE_OPS, scope='generator')):
                     gen_sgd = tf.train.MomentumOptimizer(eta, 0.9, use_nesterov=True)

@@ -184,16 +184,15 @@ def tf_final_input_transform(samples, label):
 
     if IMAGES_WINDOW_SIZE == 1:
 
-        # here the inputs are [batch, 2, h, w, 3]
-        samples_t = np.transpose(samples, [0, 2, 3, 1, 4])
-        samples_r = np.reshape(samples_t, [samples_t.shape[0], samples_t.shape[1], samples_t.shape[2], -1])
+        # here the inputs are [2, h, w, 3]
+        samples_t = np.transpose(samples, [1, 2, 0, 3])
+        samples_r = np.reshape(samples_t, [samples_t.shape[0], samples_t.shape[1], -1])
 
         if INCLUDE_FLOW:
-
             angle, strength = get_optical_flow_from_rgb(samples[0], samples[1], OpticalFlowType.DIRECTIONAL)
             return np.concatenate([samples_r, angle, strength], -1), label
-        else:
-            return samples_r, label
+
+        return samples_r, label
 
     elif IMAGES_WINDOW_SIZE == 2:
         raise NotImplementedError('Window size not supported')

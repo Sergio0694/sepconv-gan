@@ -34,16 +34,12 @@ with graph.as_default():
         disc_x_next = disc_iterator.get_next()[0]
         x_true = tf.placeholder_with_default(disc_x_next, [None, TRAINING_IMAGES_SIZE, TRAINING_IMAGES_SIZE, 3], name='x_true')
 
-    # info for the inference pass
-    with tf.variable_scope('info'):
-        tf.constant(IMAGES_WINDOW_SIZE, tf.int32, name='window_size')
-
     # change this line to choose the model to train
     LOG('Creating model')
     x = tf.placeholder_with_default(
         x_train,
-        [None, 3, None, None, None, INPUT_CHANNELS] if IMAGES_WINDOW_SIZE == 1
-        else [None, None, None, INPUT_CHANNELS],
+        [None, None, None, INPUT_CHANNELS] if IMAGES_WINDOW_SIZE == 1
+        else [None, 3, None, None, INPUT_CHANNELS],
         name='x')
     with tf.variable_scope('generator', None, [x]):
         raw_yHat = unet.get_network_v2(x / 255.0)
@@ -68,8 +64,8 @@ with graph.as_default():
             with tf.variable_scope('generator_sgd', None, [gen_loss, eta]):
                 with tf.control_dependencies(tf.get_collection(tf.GraphKeys.UPDATE_OPS, scope='generator')):
                     gen_sgd = tf.train.MomentumOptimizer(eta, 0.9, use_nesterov=True)
-                    gen_optimizer = _tf.minimize_with_clipping(gen_sgd, gen_loss, scope='generator') if CLIP_GRADIENTS \
-                                    else gen_sgd.minimize(gen_loss, var_list=tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='generator'))
+                    gen_optimizer = gen_sgd.minimize(gen_loss, var_list=tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='generator')) if GENERATOR_GRADIENT_CLIP is None \
+                                    else _tf.minimize_with_clipping(gen_sgd, gen_loss, GENERATOR_GRADIENT_CLIP, scope='generator')
 
         with tf.variable_scope('discriminator_opt', None, [disc_true, disc_false, eta]):
             with tf.variable_scope('loss', None, [disc_true, disc_false]):
@@ -77,8 +73,8 @@ with graph.as_default():
             with tf.variable_scope('discriminator_adam', None, [disc_loss, eta, eta]):
                 with tf.control_dependencies(tf.get_collection(tf.GraphKeys.UPDATE_OPS, scope='discriminator')):
                     disc_adam = tf.train.AdamOptimizer(0.0001)
-                    disc_optimizer = _tf.minimize_with_clipping(disc_adam, disc_loss, scope='discriminator') if CLIP_GRADIENTS \
-                                    else disc_adam.minimize(disc_loss, var_list=tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='discriminator'))
+                    disc_optimizer = disc_adam.minimize(disc_loss, var_list=tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='discriminator')) if DISCRIMINATOR_GRADIENT_CLIP is None \
+                                    else disc_optimizer = _tf.minimize_with_clipping(disc_adam, disc_loss, DISCRIMINATOR_GRADIENT_CLIP, scope='discriminator'))
 
     # output image
     with tf.variable_scope('inference', None, [yHat]):

@@ -41,23 +41,29 @@ def get_network_v1(x):
             with tf.variable_scope('downscale_4', None, [pool3]):
                 norm4, pool4 = downscale_block(pool3, 256)
 
-            with tf.variable_scope('hidden_vector', None, [pool4]):
-                h_conv1 = tf.layers.conv2d(pool4, 512, 3, activation=tf.nn.leaky_relu, padding='same')
+            with tf.variable_scope('downscale_5', None, [pool4]):
+                norm5, pool5 = downscale_block(pool4, 512)
+
+            with tf.variable_scope('hidden_vector', None, [pool5]):
+                h_conv1 = tf.layers.conv2d(pool5, 512, 3, activation=tf.nn.leaky_relu, padding='same')
                 h_norm1 = tf.layers.batch_normalization(h_conv1)
                 h_conv2 = tf.layers.conv2d(h_norm1, 512, 3, activation=tf.nn.leaky_relu, padding='same')
                 h_norm2 = tf.layers.batch_normalization(h_conv2)
 
-        with tf.variable_scope('decoder', None, [h_norm2, norm4, norm3, norm2, norm1]):
-            with tf.variable_scope('upscale_1', None, [h_norm2, norm4]):
-                up4 = upscale_block(h_norm2, norm4, 256)
+        with tf.variable_scope('decoder', None, [h_norm2, norm5, norm4, norm3, norm2, norm1]):
+            with tf.variable_scope('upscale_5', None, [h_norm2, norm5]):
+                up5 = upscale_block(h_norm2, norm5, 512)
 
-            with tf.variable_scope('upscale_2', None, [up4, norm3]):
+            with tf.variable_scope('upscale_4', None, [up5, norm4]):
+                up4 = upscale_block(up5, norm4, 256)
+
+            with tf.variable_scope('upscale_3', None, [up4, norm3]):
                 up3 = upscale_block(up4, norm3, 128)
 
-            with tf.variable_scope('upscale_3', None, [up3, norm2]):
+            with tf.variable_scope('upscale_2', None, [up3, norm2]):
                 up2 = upscale_block(up3, norm2, 64)
 
-            with tf.variable_scope('upscale_4', None, [up2, norm1]):
+            with tf.variable_scope('upscale_1', None, [up2, norm1]):
                 up1 = upscale_block(up2, norm1, 32)
 
             return tf.layers.conv2d(up1, 3, 1, activation=tf.nn.sigmoid)

@@ -197,7 +197,7 @@ def tf_final_input_transform(samples, label):
             raise NotImplementedError('Not supported yet')
         if FLOW_MODE == OpticalFlowEmbeddingType.BIDIRECTIONAL_PREWARPED:
             forward, backward = get_bidirectional_prewarped_frames(samples[0], samples[1])
-            return np.concat([samples_r, forward, backward], -1)
+            return np.concatenate([samples_r, forward, backward], -1), label
         raise ValueError('Invalid flow mode')
 
     elif IMAGES_WINDOW_SIZE == 2:

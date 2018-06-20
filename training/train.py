@@ -97,13 +97,13 @@ def run():
             uint8_img = tf.cast(yHat_proof, tf.uint8, name='uint8_img')
         
         # summaries
-        tf.summary.scalar('TRAIN_loss', gen_own_loss, ['TRAIN'])
-        tf.summary.scalar('TRAIN_full_loss', gen_loss, ['TRAIN_full'])
-        tf.summary.scalar('TRAIN_disc_loss', disc_loss, ['TRAIN_full'])
+        gen_own_loss_summary = tf.summary.scalar('TRAIN_loss', gen_own_loss)
+        gen_loss_summary = tf.summary.scalar('TRAIN_full_loss', gen_loss)
+        disc_loss_summary = tf.summary.scalar('TRAIN_disc_loss', disc_loss)
         test_loss = tf.placeholder(tf.float32, name='test_loss')
         tf.summary.scalar('TEST_loss', test_loss, ['_'])
-        merged_summary_all = tf.summary.merge(['TRAIN', 'TRAIN_full'])
-        merged_summary_gen = tf.summary.merge(['TRAIN'])
+        merged_summary_all = tf.summary.merge([gen_own_loss_summary, gen_loss_summary, disc_loss_summary])
+        merged_summary_gen = tf.summary.merge([gen_own_loss_summary])
 
         # model info (while inside the graph)
         INFO('{} generator variable(s)'.format(np.sum([

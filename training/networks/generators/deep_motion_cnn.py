@@ -82,8 +82,8 @@ def get_network_v3(x):
             conv1_b = tf.layers.conv2d(conv1_a, 32, 3, activation=tf.nn.relu, padding='same')
             conv1_c = tf.layers.conv2d(conv1_b, 32, 3, activation=tf.nn.relu, padding='same')
             norm1_a = tf.layers.batch_normalization(conv1_c)
-            conv1_d = tf.layers.conv2d(norm1_a, 32, 2, 2, activation=tf.nn.relu, padding='same')
-            pool1 = tf.layers.max_pooling2d(norm1_a, 2, 2, padding='same')
+            conv1_d = tf.layers.conv2d(norm1_a, 32, 3, 2, activation=tf.nn.relu, padding='same')
+            pool1 = tf.layers.max_pooling2d(norm1_a, 3, 2, padding='same')
             stack1 = tf.concat([conv1_d, pool1], 3)
             norm1_b = tf.layers.batch_normalization(stack1)
 

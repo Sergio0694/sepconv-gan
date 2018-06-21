@@ -73,7 +73,7 @@ def run():
             with tf.variable_scope('generator_opt', None, [yHat, y, disc_false, eta]):
                 with tf.variable_scope('generator_loss', None, [yHat, y, disc_false]):
                     gen_own_loss = tf.reduce_mean((yHat - y) ** 2)
-                    gen_disc_loss = -tf.reduce_mean(tf.log(disc_false))
+                    gen_disc_loss = tf.contrib.gan.losses.wargs.modified_generator_loss(disc_false)
                     gen_loss = gen_own_loss + gen_disc_loss
                     gen_loss_with_NaN_check = tf.verify_tensor_all_finite(gen_loss if DISCRIMINATOR_ACTIVATION_EPOCH is not None else gen_own_loss, 'NaN found in loss :(', 'NaN_check_output_loss')
                 with tf.variable_scope('generator_sgd', None, [gen_loss_with_NaN_check, eta]):
@@ -84,7 +84,7 @@ def run():
 
             with tf.variable_scope('discriminator_opt', None, [disc_true, disc_false, eta]):
                 with tf.variable_scope('loss', None, [disc_true, disc_false]):
-                    disc_loss = -tf.reduce_mean(tf.log(disc_true) + tf.log(1.0 - disc_false))
+                    disc_loss = tf.contrib.gan.losses.wargs.modified_discriminator_loss(disc_true, disc_false)
                 with tf.variable_scope('discriminator_adam', None, [disc_loss, eta, eta]):
                     with tf.control_dependencies(tf.get_collection(tf.GraphKeys.UPDATE_OPS, scope='discriminator')):
                         disc_adam = tf.train.AdamOptimizer(DISCRIMINATOR_LR)

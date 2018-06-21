@@ -64,7 +64,7 @@ def get_network(x):
 
             # [n, 1344]
             with tf.variable_scope('output', None, [dropout]):
-                output = tf.layers.dense(dropout, 1, tf.nn.sigmoid)
+                output = tf.layers.dense(dropout, 1)
 
     return dropout_drop_prob, output
 

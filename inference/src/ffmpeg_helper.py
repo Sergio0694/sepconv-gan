@@ -8,14 +8,14 @@ def get_video_info(video_path):
     '''
 
     output = Popen(
-        'ffprobe -v quiet -of csv=p=0 -select_streams v:0 -show_entries stream=r_frame_rate,duration "{}"'.format(video_path),
+        'ffprobe -v quiet -of csv=p=0 -select_streams v:0 -show_entries stream=width,height,r_frame_rate,duration "{}"'.format(video_path),
         stdout=PIPE,
         stderr=STDOUT).communicate()
     try:
-        info = output[0].decode('utf-8').strip().split(',')     # bytes from PIPE > decode in utf-8
-        return int(info[0].split('/')[0]), int(float(info[1]))  # [framerate, seconds]
+        info = output[0].decode('utf-8').strip().split(',') # bytes from PIPE > decode in utf-8
+        return int(info[0]), int(info[1]), int(info[2].split('/')[0]), int(float(info[3]))  # [width, height, framerate, seconds]
     except ValueError:
-        return None, None
+        return None, None, None, None
 
 
 def extract_frames(video_path, output_folder, scale=None, start=0, duration=60, suffix='', extension='jpg', timeout=10):

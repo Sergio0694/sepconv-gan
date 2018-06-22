@@ -27,13 +27,21 @@ def convert(args):
 
     # Initial setup and info
     LOG('Processing {}'.format(args['source']))
-    framerate, duration = ffmpeg.get_video_info(args['source'])
-    if framerate is None:
+    width, height, framerate, duration = ffmpeg.get_video_info(args['source'])
+    if any((info is None for info in [width, height, framerate, duration])):
         raise ValueError('Error retrieving video info')
-    if duration < 10:
+    if duration < 2:
         raise ValueError('The video file is either empty or too short')
     INFO('Total duration: {}'.format(format_duration(duration)))
     INFO('Framerate: {}/1001'.format(framerate))
+    INFO('Resolution: {}x{}'.format(width, height))
+
+    # Validate the target resolution
+    if args['scale'] is not None:
+        if (args['scale'] * height) % width != 0:
+            raise ValueError('The scaled resolution would produce a fractional height')
+        if (args['scale'] * height // width) % 4 != 0:
+            raise ValueError('The scaled resolution must be a multiple of 4 to be encoded correctly')
 
     # calculate the framerate parameters to encode the video chunks
     if args['interpolation'] == 'double':

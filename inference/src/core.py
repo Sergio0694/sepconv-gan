@@ -33,6 +33,13 @@ def convert(args):
     if duration < 10:
         raise ValueError('The video file is either empty or too short')
     INFO('Total duration: {}'.format(format_duration(duration)))
+    INFO('Framerate: {}/1001'.format(framerate))
+
+    # calculate the framerate parameters to encode the video chunks
+    if args['interpolation'] == 'double':
+        in_fps, out_fps = '{}/1001'.format(framerate * 2), '{}/1001'.format(framerate * 2)
+    else:
+        in_fps, out_fps = '{}/1001'.format(framerate), '{}/1001'.format(framerate)
 
     # Loop until all video chunks have been created
     frames_path = os.path.join(args['working_dir'], 'frames')
@@ -82,7 +89,7 @@ def convert(args):
             # encode the interpolated video
             LOG('Encoding video chunk #{}'.format(video_timestep // step_size))
             chunk_path = os.path.join(args['working_dir'], '_{}.mp4'.format(chunk_timestep))
-            ffmpeg.create_video('{}\\%03d.{}'.format(frames_path, args['frame_quality']), chunk_path, args['encoder'], args['crf'], args['preset'])
+            ffmpeg.create_video('{}\\%03d.{}'.format(frames_path, args['frame_quality']), chunk_path, in_fps, out_fps, args['encoder'], args['crf'], args['preset'])
             chunks_paths += [chunk_path]
             chunk_timestep += 1
 
@@ -95,6 +102,6 @@ def convert(args):
     
     # create the final resampled video
     LOG('Creating output video')
-    ffmpeg.concat_videos(list_path, args['source'], args['output'])
+    ffmpeg.concat_videos(list_path, args['source'] if args['interpolation'] == 'double' else None, args['output'])
     LOG('Video creation completed')
     rmtree(args['working_dir']) # cleanup

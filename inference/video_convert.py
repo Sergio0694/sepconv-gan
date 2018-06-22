@@ -16,7 +16,11 @@ def setup():
     parser.add_argument('--temp-buffer-lenght', default=1, help='The maximum duration of temporary video buffers to store on disk.')
     parser.add_argument('-encoder', default='h264', help='The video encoder [h264|h265].')
     parser.add_argument('-crf', default='23', help='The CRF quality for the encoded video [0-51].')
-    parser.add_argument('-preset', default='medium', help='The encoding profile (see trac.ffmpeg.org/wiki/Encode/H.264).')    
+    parser.add_argument('-preset', default='medium', help='The encoding profile (see trac.ffmpeg.org/wiki/Encode/H.264).')
+    parser.add_argument('-interpolation', default='double', help='The ratio between input and output framerate [double|half]. ' \
+                        '"double" keeps the original video length and doubles the framerate, while "half" maintains the input ' \
+                        'framerate and makes the output video twice as long as the original, effectively slowing it down. ' \
+                        'Using this mode will remove the audio from the output video, as it wouldn\'t have the right duration.')
     parser.add_argument('-output', help='The path of the output file to create', required=True)
     args = vars(parser.parse_args())
 
@@ -45,6 +49,8 @@ def setup():
         raise ValueError('The CRF value must be in the [0-51] range.')
     if args['preset'] not in ['ultrafast' 'superfast', 'veryfast', 'faster', 'fast', 'medium', 'slow', 'slower', 'veryslow']:
         raise ValueError('Invalid preset value, see trac.ffmpeg.org/wiki/Encode/H.264 for more info.')
+    if args['interpolation'] not in ['double', 'half']:
+        raise ValueError('Invalid interpolation option selected')
     if not args['output'].endswith('.mp4'):
         raise ValueError('The output file must have the .mp4 extension')
     

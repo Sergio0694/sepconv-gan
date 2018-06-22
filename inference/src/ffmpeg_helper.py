@@ -1,21 +1,22 @@
 from pathlib import Path
 from subprocess import call, Popen, PIPE, STDOUT, TimeoutExpired
 
-def get_video_duration(video_path):
-    '''Returns the duration of the video specified by the given path, in seconds.
-    
+def get_video_info(video_path):
+    '''Returns a tuple with the framerate numerator and the video duration in seconds.
+
     video_path(str) -- the path of the video to analyze
     '''
 
-    result = Popen(
-        'ffprobe -i "{}" -show_entries format=duration -v quiet -of csv="p=0"'.format(video_path), 
+    output = Popen(
+        'ffprobe -v quiet -of csv=p=0 -select_streams v:0 -show_entries stream=r_frame_rate,duration "{}"'.format(video_path),
         stdout=PIPE,
-        stderr=STDOUT)
-    output = result.communicate()
+        stderr=STDOUT).communicate()
     try:
-        return int(float(output[0])) # bytes from PIPE > float > round to int
-    except ValueError:
-        return -1
+        info = output[0].decode('utf-8').strip().split(',')     # bytes from PIPE > decode in utf-8
+        return int(info[0].split('/')[0]), int(float(info[1]))  # [framerate, seconds]
+    except Exception:
+        return None, None
+
 
 def extract_frames(video_path, output_folder, scale=None, start=0, duration=60, suffix='', extension='jpg', timeout=10):
     '''Exports a series of frames from the input video to the specified folder.

@@ -27,7 +27,9 @@ def convert(args):
 
     # Initial setup and info
     LOG('Processing {}'.format(args['source']))
-    duration = ffmpeg.get_video_duration(args['source'])
+    framerate, duration = ffmpeg.get_video_info(args['source'])
+    if framerate is None:
+        raise ValueError('Error retrieving video info')
     if duration < 10:
         raise ValueError('The video file is either empty or too short')
     INFO('Total duration: {}'.format(format_duration(duration)))

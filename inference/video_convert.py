@@ -11,7 +11,7 @@ def setup():
     parser.add_argument('-source', help='The video file to convert', required=True)
     parser.add_argument('--frame-quality', default='jpg', help='The format of intermediate frames [jpg|png|bmp].')
     parser.add_argument('-scale', default=None, help='The optional scaling of the video (horizontal resolution).')
-    parser.add_argument('--model-path', default=r'\model', help='The folder with the trained model to use.', required=True)    
+    parser.add_argument('--model-path', default=None, help='The folder with the trained model to use.', required=True)    
     parser.add_argument('--working-dir', default=None, help='An optional path for the working dir to use to store temporary files.')
     parser.add_argument('--temp-buffer-lenght', default=1, help='The maximum duration of temporary video buffers to store on disk.')
     parser.add_argument('-encoder', default='h264', help='The video encoder [h264|h265].')
@@ -30,7 +30,7 @@ def setup():
             raise ValueError('The scale must be at least equal to 240.')
         else:
             args['scale'] = int(args['scale'])
-    if not os.path.isdir(args['model_path']):
+    if args['model_path'] is None or not os.path.isdir(args['model_path']):
         raise ValueError('The input model directory does not exist.')
     if args['working_dir'] is None:
         args['working_dir'] = os.path.dirname(args['output'])

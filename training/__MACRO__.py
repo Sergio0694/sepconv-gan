@@ -39,6 +39,6 @@ VERBOSE_MODE = True
 TRAINING_PROGRESS_BAR_LENGTH = 10
 SHOW_TEST_SAMPLES_INFO_ON_LOAD = True
 TENSORBOARD_ROOT_DIR = 'F:\\tensorboard'
-MODEL_ID = '{}.{}_[{}]'.format(nn.__name__, NETWORK_BUILDER.__name__, datetime.now().strftime('%d-%m-%Y_%H-%M'))
+MODEL_ID = '{}.{}_({})'.format(nn.__name__.split('.')[-1], NETWORK_BUILDER.__name__, datetime.now().strftime('%d-%m-%Y_%H-%M'))
 TENSORBOARD_RUN_DIR = '{}\\{}'.format(TENSORBOARD_ROOT_DIR, MODEL_ID)
 MAX_MODELS_TO_KEEP = 1

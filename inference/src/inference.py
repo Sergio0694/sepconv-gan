@@ -4,7 +4,7 @@ from time import time
 import cv2
 import tensorflow as tf
 import src.dataset_loader as dataset
-from src.logger import LOG, INFO, BAR, RESET_LINE
+from src.__MACRO__ import LOG, INFO, BAR, RESET_LINE
 
 PROGRESS_BAR_LENGTH = 20
 

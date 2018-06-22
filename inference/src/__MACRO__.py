@@ -4,16 +4,16 @@ from colorama import init, Fore
 init(autoreset=True, convert=True)
 
 def LOG(text):
-    '''Displays a debug message to the screen, with the [DEBUG] prefix
+    '''Displays an extended info message to the screen, prefixed by the [INFO] tag.
 
     text(str) -- the message to display
     '''
 
-    print('{}[DEBUG]'.format(Fore.LIGHTRED_EX), end=' ')
+    print('{}[INFO]'.format(Fore.LIGHTBLUE_EX), end=' ')
     print('{}{}'.format(Fore.LIGHTWHITE_EX, text), flush=True)
 
 def INFO(text):
-    '''Displays an info message, with the >> prefix
+    '''Displays an info message, with the >> prefix.
 
     text(str) -- the message to display
     '''
@@ -21,8 +21,17 @@ def INFO(text):
     print('{} >>'.format(Fore.LIGHTCYAN_EX), end=' ')
     print(text, flush=True)
 
+def ERROR(text):
+    '''Displays an error message and exits the program automatically.
+    
+    text(str) -- the message to display'''
+
+    print('{}[ERROR]'.format(Fore.LIGHTRED_EX), end=' ')
+    print('{}{}'.format(Fore.LIGHTWHITE_EX, text), flush=True)
+    exit(-1)
+
 def BAR(x, y, info=''):
-    '''Displays a simple progress bar with
+    '''Displays a simple progress bar with some additional info.
 
     x(int) -- the number of completed steps
     y(int) -- the total number of steps to perform
@@ -37,7 +46,7 @@ def BAR(x, y, info=''):
         print('', end='\r', flush=True) # reset the current line
 
 def RESET_LINE(clean=False):
-    '''Resets the current line by writing a carriage return character
+    '''Resets the current line by writing a carriage return character.
 
     clean(bool) -- indicates whether or not to overwrite the current line to clean it up
     '''

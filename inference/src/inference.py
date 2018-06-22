@@ -55,7 +55,7 @@ def process_frames(working_path, session):
     groups = dataset.load_samples(working_path, 1)
     previous_idx = len(groups[0]) // 2 - 1
     extension = groups[0][0][-4:] # same image format as the input
-    INFO('{} frame(s) to process'.format(len(groups)))
+    INFO('{} frame pair(s) to process'.format(len(groups)))
 
     # setup the background worked
     frames_queue = Queue()

@@ -65,13 +65,13 @@ def convert(args):
             video_timestep += step_size
 
             # Inference pass on the n-th video chunk
-            frames = os.listdir(frames_path)
-            if not frames:
+            if not os.listdir(frames_path):
                 break
             process_frames(frames_path, session)
 
             # sort the frames by alternating the original and the interpolated
-            LOG('Preparing generated frames')                    
+            LOG('Preparing generated frames')     
+            frames = os.listdir(frames_path)               
             frames.sort(key=frames_name_comparer)
 
             # duplicate the last frame (no interpolation available)

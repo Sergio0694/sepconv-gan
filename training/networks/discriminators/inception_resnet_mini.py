@@ -59,14 +59,13 @@ def get_network(x):
                 reduction_shape = [block_c_out.shape[1], block_c_out.shape[1]]
                 average_pool = tf.layers.average_pooling2d(block_c_out, reduction_shape, reduction_shape)
                 reshape = tf.reshape(average_pool, [-1, average_pool.shape[-1]])
-                dropout_drop_prob = tf.placeholder(tf.bool, name='dropout_drop_prob')
-                dropout = tf.layers.dropout(reshape, dropout_drop_prob)
+                dropout = tf.layers.dropout(reshape, 0.8)
 
             # [n, 1344]
             with tf.variable_scope('output', None, [dropout]):
                 output = tf.layers.dense(dropout, 1)
 
-    return dropout_drop_prob, output
+    return output
 
 def block_a(tensor, scale=0.5):
     block_a_b1_conv = tf.layers.conv2d(tensor, 32, 1, padding='same')

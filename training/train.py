@@ -61,10 +61,10 @@ def run():
         # discriminator setup
         with tf.variable_scope('discriminator', None, [raw_yHat, x_true], reuse=tf.AUTO_REUSE):
             with tf.name_scope('true', [x_true]):
-                keep_prob, disc_true = inception_mini.get_network(x_true / 255.0)
+                disc_true = inception_mini.get_network(x_true / 255.0)
             with tf.name_scope('false', [raw_yHat]):
                 raw_yHat.set_shape([None, TRAINING_IMAGES_SIZE, TRAINING_IMAGES_SIZE, 3])
-                _, disc_false = inception_mini.get_network(raw_yHat)
+                disc_false = inception_mini.get_network(raw_yHat)
 
         # setup the loss function
         with tf.variable_scope('optimization', None, [yHat, y, disc_true, disc_false]):
@@ -144,13 +144,13 @@ def run():
                     if disc_optimizer in fetches:
                         _, _, gen_score, gen_full_score, disc_score, summary = session.run(
                             [gen_optimizer, disc_optimizer, gen_own_loss, gen_loss, disc_loss, merged_summary_all],
-                            feed_dict={eta: lr, keep_prob: 0.8})
+                            feed_dict={eta: lr})
                         RESET_LINE()
                         LOG('#{}\tgen_own: {:12.04f}, gen_full: {:12.04f}, disc: {:12.04f}'.format(step, gen_score, gen_full_score, disc_score))
                     else:
                         _, gen_score, summary = session.run(
                             [gen_optimizer, gen_own_loss, merged_summary_gen],
-                            feed_dict={eta: lr, keep_prob: 0.8})
+                            feed_dict={eta: lr})
                         RESET_LINE()
                         LOG('#{}\tgen_own: {:12.04f}'.format(step, gen_score))
                     writer.add_summary(summary, samples)
@@ -188,7 +188,7 @@ def run():
                     if step == DISCRIMINATOR_ACTIVATION_EPOCH:
                         fetches = [gen_optimizer, disc_optimizer]
                 else:
-                    session.run(fetches, feed_dict={eta: lr, keep_prob: 0.8})
+                    session.run(fetches, feed_dict={eta: lr})
 
                 # training progress
                 samples += BATCH_SIZE

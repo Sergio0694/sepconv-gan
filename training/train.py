@@ -54,17 +54,18 @@ def run():
             [None, None, None, INPUT_CHANNELS] if IMAGES_WINDOW_SIZE == 1
             else [None, 3, None, None, INPUT_CHANNELS],
             name='x')
+        training = tf.placeholder(tf.bool, name='training_mode')
         with tf.variable_scope('generator', None, [x]):
-            raw_yHat = NETWORK_BUILDER(x / 255.0)
+            raw_yHat = NETWORK_BUILDER(x / 255.0, training)
             yHat = raw_yHat * 255.0
 
         # discriminator setup
         with tf.variable_scope('discriminator', None, [raw_yHat, x_true], reuse=tf.AUTO_REUSE):
             with tf.name_scope('true', [x_true]):
-                keep_prob, disc_true = inception_mini.get_network(x_true / 255.0)
+                disc_true = inception_mini.get_network(x_true / 255.0)
             with tf.name_scope('false', [raw_yHat]):
                 raw_yHat.set_shape([None, TRAINING_IMAGES_SIZE, TRAINING_IMAGES_SIZE, 3])
-                _, disc_false = inception_mini.get_network(raw_yHat)
+                disc_false = inception_mini.get_network(raw_yHat)
 
         # setup the loss function
         with tf.variable_scope('optimization', None, [yHat, y, disc_true, disc_false]):
@@ -73,7 +74,7 @@ def run():
             with tf.variable_scope('generator_opt', None, [yHat, y, disc_false, eta]):
                 with tf.variable_scope('generator_loss', None, [yHat, y, disc_false]):
                     gen_own_loss = tf.reduce_mean((yHat - y) ** 2)
-                    gen_disc_loss = -tf.reduce_mean(tf.log(disc_false))
+                    gen_disc_loss = tf.contrib.gan.losses.wargs.modified_generator_loss(disc_false) # ignored if discriminator is disabled
                     gen_loss = gen_own_loss + gen_disc_loss
                     gen_loss_with_NaN_check = tf.verify_tensor_all_finite(gen_loss if DISCRIMINATOR_ACTIVATION_EPOCH is not None else gen_own_loss, 'NaN found in loss :(', 'NaN_check_output_loss')
                 with tf.variable_scope('generator_sgd', None, [gen_loss_with_NaN_check, eta]):
@@ -84,7 +85,7 @@ def run():
 
             with tf.variable_scope('discriminator_opt', None, [disc_true, disc_false, eta]):
                 with tf.variable_scope('loss', None, [disc_true, disc_false]):
-                    disc_loss = -tf.reduce_mean(tf.log(disc_true) + tf.log(1.0 - disc_false))
+                    disc_loss = tf.contrib.gan.losses.wargs.modified_discriminator_loss(disc_true, disc_false)
                 with tf.variable_scope('discriminator_adam', None, [disc_loss, eta, eta]):
                     with tf.control_dependencies(tf.get_collection(tf.GraphKeys.UPDATE_OPS, scope='discriminator')):
                         disc_adam = tf.train.AdamOptimizer(DISCRIMINATOR_LR)
@@ -144,13 +145,13 @@ def run():
                     if disc_optimizer in fetches:
                         _, _, gen_score, gen_full_score, disc_score, summary = session.run(
                             [gen_optimizer, disc_optimizer, gen_own_loss, gen_loss, disc_loss, merged_summary_all],
-                            feed_dict={eta: lr, keep_prob: 0.8})
+                            feed_dict={eta: lr, training: True})
                         RESET_LINE()
                         LOG('#{}\tgen_own: {:12.04f}, gen_full: {:12.04f}, disc: {:12.04f}'.format(step, gen_score, gen_full_score, disc_score))
                     else:
                         _, gen_score, summary = session.run(
                             [gen_optimizer, gen_own_loss, merged_summary_gen],
-                            feed_dict={eta: lr, keep_prob: 0.8})
+                            feed_dict={eta: lr, training: True})
                         RESET_LINE()
                         LOG('#{}\tgen_own: {:12.04f}'.format(step, gen_score))
                     writer.add_summary(summary, samples)
@@ -163,7 +164,7 @@ def run():
                     test_score, j = 0, 0
                     while True:
                         try:
-                            score, prediction = session.run([gen_own_loss, uint8_img])
+                            score, prediction = session.run([gen_own_loss, uint8_img], feed_dict={training: False})
                             test_score += score
 
                             # save the generated images to track progress
@@ -188,7 +189,7 @@ def run():
                     if step == DISCRIMINATOR_ACTIVATION_EPOCH:
                         fetches = [gen_optimizer, disc_optimizer]
                 else:
-                    session.run(fetches, feed_dict={eta: lr, keep_prob: 0.8})
+                    session.run(fetches, feed_dict={eta: lr, training: True})
 
                 # training progress
                 samples += BATCH_SIZE

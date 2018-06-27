@@ -2,7 +2,7 @@ import os
 import re
 from shutil import copyfile, rmtree
 import src.ffmpeg_helper as ffmpeg
-from src.logger import LOG, INFO
+from src.__MACRO__ import LOG, INFO, ERROR
 from src.inference import process_frames, open_session
 
 def frames_name_comparer(name):
@@ -27,10 +27,27 @@ def convert(args):
 
     # Initial setup and info
     LOG('Processing {}'.format(args['source']))
-    duration = ffmpeg.get_video_duration(args['source'])
-    if duration < 10:
-        raise ValueError('The video file is either empty or too short')
+    width, height, framerate, duration = ffmpeg.get_video_info(args['source'])
+    if any((info is None for info in [width, height, framerate, duration])):
+        ERROR('Error retrieving video info')
+    if duration < 2:
+        ERROR('The video file is either empty or too short')
     INFO('Total duration: {}'.format(format_duration(duration)))
+    INFO('Framerate: {}/1001'.format(framerate))
+    INFO('Resolution: {}x{}'.format(width, height))
+
+    # Validate the target resolution
+    if args['scale'] is not None:
+        if (args['scale'] * height) % width != 0:
+            ERROR('The scaled resolution would produce a fractional height')
+        if (args['scale'] * height // width) % 4 != 0:
+            ERROR('The scaled resolution must be a multiple of 4 to be encoded correctly')
+
+    # calculate the framerate parameters to encode the video chunks
+    if args['interpolation'] == 'double':
+        in_fps, out_fps = '{}/1001'.format(framerate * 2), '{}/1001'.format(framerate * 2)
+    else:
+        in_fps, out_fps = '{}/1001'.format(framerate), '{}/1001'.format(framerate)
 
     # Loop until all video chunks have been created
     frames_path = os.path.join(args['working_dir'], 'frames')
@@ -50,19 +67,18 @@ def convert(args):
 
             # progress checks
             if not extract_ok or (video_timestep == 0 and not os.listdir(frames_path)): 
-                LOG('Failed to extract frames')
                 rmtree(args['working_dir'])
-                exit(1)
+                ERROR('Failed to extract frames')
             video_timestep += step_size
 
             # Inference pass on the n-th video chunk
-            frames = os.listdir(frames_path)
-            if not frames:
+            if not os.listdir(frames_path):
                 break
             process_frames(frames_path, session)
 
             # sort the frames by alternating the original and the interpolated
-            LOG('Preparing generated frames')                    
+            LOG('Preparing generated frames')     
+            frames = os.listdir(frames_path)               
             frames.sort(key=frames_name_comparer)
 
             # duplicate the last frame (no interpolation available)
@@ -80,7 +96,7 @@ def convert(args):
             # encode the interpolated video
             LOG('Encoding video chunk #{}'.format(video_timestep // step_size))
             chunk_path = os.path.join(args['working_dir'], '_{}.mp4'.format(chunk_timestep))
-            ffmpeg.create_video('{}\\%03d.{}'.format(frames_path, args['frame_quality']), chunk_path, args['encoder'], args['crf'], args['preset'])
+            ffmpeg.create_video('{}\\%03d.{}'.format(frames_path, args['frame_quality']), chunk_path, in_fps, out_fps, args['encoder'], args['crf'], args['preset'])
             chunks_paths += [chunk_path]
             chunk_timestep += 1
 
@@ -93,6 +109,6 @@ def convert(args):
     
     # create the final resampled video
     LOG('Creating output video')
-    ffmpeg.concat_videos(list_path, args['source'], args['output'])
-    LOG('Video creation completed')
+    ffmpeg.concat_videos(list_path, args['source'] if args['interpolation'] == 'double' else None, args['output'])
     rmtree(args['working_dir']) # cleanup
+    LOG('Video creation completed')

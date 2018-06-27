@@ -1,21 +1,22 @@
 from pathlib import Path
 from subprocess import call, Popen, PIPE, STDOUT, TimeoutExpired
 
-def get_video_duration(video_path):
-    '''Returns the duration of the video specified by the given path, in seconds.
-    
+def get_video_info(video_path):
+    '''Returns a tuple with the framerate numerator and the video duration in seconds.
+
     video_path(str) -- the path of the video to analyze
     '''
 
-    result = Popen(
-        'ffprobe -i "{}" -show_entries format=duration -v quiet -of csv="p=0"'.format(video_path), 
+    output = Popen(
+        'ffprobe -v quiet -of csv=p=0 -select_streams v:0 -show_entries stream=width,height,r_frame_rate,duration "{}"'.format(video_path),
         stdout=PIPE,
-        stderr=STDOUT)
-    output = result.communicate()
+        stderr=STDOUT).communicate()
     try:
-        return int(float(output[0])) # bytes from PIPE > float > round to int
+        info = output[0].decode('utf-8').strip().split(',') # bytes from PIPE > decode in utf-8
+        return int(info[0]), int(info[1]), int(info[2].split('/')[0]), int(float(info[3]))  # [width, height, framerate, seconds]
     except ValueError:
-        return -1
+        return None, None, None, None
+
 
 def extract_frames(video_path, output_folder, scale=None, start=0, duration=60, suffix='', extension='jpg', timeout=10):
     '''Exports a series of frames from the input video to the specified folder.
@@ -70,11 +71,13 @@ def extract_frames(video_path, output_folder, scale=None, start=0, duration=60, 
         call(args)
         return True
 
-def create_video(frames_path, output_path, encoder='h264', crf='23', preset='normal'):
+def create_video(frames_path, output_path, in_fps, out_fps, encoder='h264', crf='23', preset='normal'):
     '''Creates an interpolated video from the input frames.
 
     frames_path(str) -- the formatted path of the folder with the source frames (returned by extract_all_frames)
     output_path(str) -- the path of the video file to create
+    in_fps(str) -- the input framerate, in x/1001 format
+    out_fps(str) -- the output framerate, in x/1001 format
     encoder(str) -- the encoder to use
     crf(str) -- the CRF value for the encoder
     preset(str) -- the encoder preset to use
@@ -84,13 +87,13 @@ def create_video(frames_path, output_path, encoder='h264', crf='23', preset='nor
         'ffmpeg',
         '-y',
         '-loglevel', 'error',
-        '-framerate', '48000/1001',
+        '-framerate', in_fps,
         '-start_number', '1',
         '-i', frames_path,
         '-c:v', 'libx{}'.format(encoder[1:]),
         '-crf', crf,
         '-preset', preset,
-        '-r', '48000/1001',
+        '-r', out_fps,
         '-pix_fmt', 'yuv420p',
         output_path
     ])
@@ -101,17 +104,27 @@ def concat_videos(list_path, original_path, output_path):
     list with the audio from the second input video.
 
     list_path(str) -- the path of the txt file with the list of video chunks
-    origina-path(str) -- the path of the original video, to use to get the audio track
+    origina-path(str) -- the optional path of the original video, to use to get the audio track
     output_path(str) -- the path of the output video to create'''
 
-    call([
-        'ffmpeg',
-        '-f', 'concat',
-        '-safe', '0', # not really necessary
-        '-i', list_path,
-        '-i', original_path,
-        '-c', 'copy',
-        '-map', '0:v:0',
-        '-map', '1:a:0',
-        output_path
-    ])
+    if original_path is None:
+        call([
+            'ffmpeg',
+            '-f', 'concat',
+            '-safe', '0', # not really necessary
+            '-i', list_path,
+            '-c', 'copy',
+            output_path
+        ])
+    else:
+        call([
+            'ffmpeg',
+            '-f', 'concat',
+            '-safe', '0', # not really necessary
+            '-i', list_path,
+            '-i', original_path,
+            '-c', 'copy',
+            '-map', '0:v:0',
+            '-map', '1:a:0',
+            output_path
+        ])

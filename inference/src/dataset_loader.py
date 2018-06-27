@@ -43,7 +43,11 @@ def tf_load_images(samples, directory):
     directory(tf.string) -- the parent directory for the input files
     '''
     
-    return np.array([
+    # load the frames
+    frames = [
         cv2.imread('{}\\{}'.format(str(directory)[2:-1], str(sample)[2:-1])).astype(np.float32)
         for sample in samples
-    ], dtype=np.float32, copy=False)
+    ]
+
+    # TODO: handle preprocessing here (eg. optical flow)
+    return np.concatenate(frames, -1)

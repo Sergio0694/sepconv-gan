@@ -5,11 +5,7 @@
 
 using namespace tensorflow;
 
-/* ==============
- * Forward op
- * =========== */
-
-REGISTER_OP("SepConv")
+REGISTER_OP("Sepconv")
     .Input("input: float")      // A [batch, height, width, 3] tensor
     .Input("kv: float")         // The vertical kernel [height, width, kchannels] tensor
     .Input("kh: float")         // The horizontal kernel [height, width, kchannels] tensor
@@ -40,7 +36,7 @@ REGISTER_OP("SepConv")
 });
 
 // GPU launcher
-void SepConvKernelLauncher(
+void SepconvKernelLauncher(
     const float* inputs, 
     const float* kv,
     const float* kh,
@@ -51,10 +47,10 @@ void SepConvKernelLauncher(
     float* output);
 
 // GPU op
-class SepConvOpGPU : public OpKernel
+class SepconvOpGPU : public OpKernel
 {
 public:    
-    explicit SepConvOpGPU(OpKernelConstruction* context) : OpKernel(context) { }
+    explicit SepconvOpGPU(OpKernelConstruction* context) : OpKernel(context) { }
 
     void Compute(OpKernelContext* context) override 
     {
@@ -103,7 +99,7 @@ public:
         auto f_kh = kh.flat<float>();
         auto f_output = output->template flat<float>();
 
-        SepConvKernelLauncher(
+        SepconvKernelLauncher(
             f_input.data(),
             f_kv.data(),
             f_kh.data(),
@@ -116,4 +112,4 @@ public:
     }
 };
 
-REGISTER_KERNEL_BUILDER(Name("SepConv").Device(DEVICE_GPU), SepConvOpGPU);
+REGISTER_KERNEL_BUILDER(Name("Sepconv").Device(DEVICE_GPU), SepconvOpGPU);

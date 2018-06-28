@@ -2,11 +2,7 @@
 #include <cuda.h>
 #include <stdio.h>
 
-/* ==============
- * Forward op
- * =========== */
-
-__global__ void SepConvKernel(
+__global__ void SepconvKernel(
     const int ntasks,
     const float* inputs,
     const float* kv,
@@ -52,7 +48,7 @@ __global__ void SepConvKernel(
 
 #define THREADS_PER_BLOCK_FORWARD 512
 
- void SepConvKernelLauncher(
+ void SepconvKernelLauncher(
     const float* inputs, 
     const float* kv,
     const float* kh,
@@ -63,7 +59,7 @@ __global__ void SepConvKernel(
     float* output)
 {
     int ntasks = n * h * w * 3;
-    SepConvKernel<<<(ntasks + THREADS_PER_BLOCK_FORWARD - 1) / THREADS_PER_BLOCK_FORWARD, THREADS_PER_BLOCK_FORWARD>>>(
+    SepconvKernel<<<(ntasks + THREADS_PER_BLOCK_FORWARD - 1) / THREADS_PER_BLOCK_FORWARD, THREADS_PER_BLOCK_FORWARD>>>(
         ntasks, inputs, kv, kh, h, w, kchannels, output);
     cudaError_t cudaerr = cudaDeviceSynchronize();
     if (cudaerr != cudaSuccess)

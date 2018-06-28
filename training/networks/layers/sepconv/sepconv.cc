@@ -8,22 +8,27 @@ using namespace tensorflow;
 /* ==============
  * Forward op
  * =========== */
+
 REGISTER_OP("SepConv")
-    .Input("input: float")    // A [batch, height, width, channels] tensor
-    .Input("kv: float")       // The vertical kernel [height, width, kchannels] tensor
-    .Input("kh: float")       // The horizontal kernel [height, width, kchannels] tensor
-    .Output("output: float")  // The resulting [batch, height, width, channels] tensor
+    .Input("input: float")      // A [batch, height, width, 3] tensor
+    .Input("kv: float")         // The vertical kernel [height, width, kchannels] tensor
+    .Input("kh: float")         // The horizontal kernel [height, width, kchannels] tensor
+    .Output("output: float")    // The resulting [batch, height, width, 3] tensor
     .SetShapeFn([](::tensorflow::shape_inference::InferenceContext* c)
 {    
     // Ensure the input rank is 4
     shape_inference::ShapeHandle input_shape;
     TF_RETURN_IF_ERROR(c->WithRank(c->input(0), 4, &input_shape));
 
+    // Ensure the input is an RGB image
+    shape_inference::DimensionHandle channels = c->Dim(input_shape, 3);
+    TF_RETURN_IF_ERROR(c->WithValue(channels, 3, &channels));
+
     // Ensure the kernels rank is 4
     shape_inference::ShapeHandle kv_shape;
     shape_inference::ShapeHandle kh_shape;
-    TF_RETURN_IF_ERROR(c->WithRank(c->input(2), 4, &kv_shape));
-    TF_RETURN_IF_ERROR(c->WithRank(c->input(1), 4, &kh_shape));
+    TF_RETURN_IF_ERROR(c->WithRank(c->input(1), 4, &kv_shape));
+    TF_RETURN_IF_ERROR(c->WithRank(c->input(2), 4, &kh_shape));
 
     // Ensure both kernels have the same shape, it should be [None, None, kchannels]    
     TF_RETURN_IF_ERROR(c->Merge(kh_shape, kv_shape, &kv_shape));
@@ -42,7 +47,6 @@ void SepConvKernelLauncher(
     const int n, 
     const int h, 
     const int w,
-    const int c,
     const int kchannels,
     float* output);
 
@@ -71,7 +75,6 @@ public:
         const int n = input_shape.dim_size(0);
         const int h = input_shape.dim_size(1);
         const int w = input_shape.dim_size(2);
-        const int c = input_shape.dim_size(3);
         const int kchannels = kv_shape.dim_size(3);
 
         // Ensure the batch number matches
@@ -107,7 +110,6 @@ public:
             n, 
             h, 
             w,
-            c,
             kchannels,
             f_output.data()
         );

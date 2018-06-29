@@ -60,7 +60,7 @@ __global__ void SepconvGradKernel(
     }
 }
 
-#define THREADS_PER_BLOCK_BACKWARD 256
+#define THREADS_PER_BLOCK_BACKWARD 512
 
 void SepconvGradKernelLauncher(
     const float* grad,

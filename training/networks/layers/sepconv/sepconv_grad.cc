@@ -86,6 +86,7 @@ public:
         DCHECK_EQ(h, input_shape.dim_size(1));
         DCHECK_EQ(w, input_shape.dim_size(2));
         DCHECK_EQ(3, input_shape.dim_size(3));
+        DCHECK_EQ(3, grad_shape.dim_size(3));
 
         // Create the output tensor sinfo	
         TensorShape grads_shape;

@@ -1,10 +1,11 @@
+import os
 from datetime import datetime
 import networks.generators.deep_motion_cnn as nn
 from helpers._cv2 import OpticalFlowEmbeddingType
 
 # paths
-TRAINING_DATASET_PATH = 'D:\\ML\\th\\datasets\\480p'
-TEST_DATASET_PATH = 'D:\\ML\\th\\datasets\\test_1080'
+TRAINING_DATASET_PATH = '/media/sergio/SSD/ML/th/datasets/480p'
+TEST_DATASET_PATH = '/media/sergio/SSD/ML/th/datasets/test_1080'
 
 # preprocessing parameters
 TRAINING_IMAGES_SIZE = 240
@@ -32,13 +33,13 @@ BATCH_SIZE = 32
 DISCRIMINATOR_ACTIVATION_EPOCH = 1
 GENERATOR_GRADIENT_CLIP = 5.0
 DISCRIMINATOR_GRADIENT_CLIP = 5.0
-NETWORK_BUILDER = nn.get_network_v1
+NETWORK_BUILDER = nn.get_network_v2
 
 # debug
 VERBOSE_MODE = True
 TRAINING_PROGRESS_BAR_LENGTH = 10
 SHOW_TEST_SAMPLES_INFO_ON_LOAD = True
-TENSORBOARD_ROOT_DIR = 'F:\\tensorboard'
+TENSORBOARD_ROOT_DIR = '/home/sergio/Documents/tensorboard'
 MODEL_ID = '{}.{}_({})'.format(nn.__name__.split('.')[-1], NETWORK_BUILDER.__name__, datetime.now().strftime('%d-%m-%Y_%H-%M'))
-TENSORBOARD_RUN_DIR = '{}\\{}'.format(TENSORBOARD_ROOT_DIR, MODEL_ID)
+TENSORBOARD_RUN_DIR = os.path.join(TENSORBOARD_ROOT_DIR, MODEL_ID)
 MAX_MODELS_TO_KEEP = 1

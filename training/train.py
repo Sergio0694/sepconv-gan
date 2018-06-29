@@ -12,7 +12,7 @@ import networks.discriminators.inception_resnet_mini as inception_mini
 import networks._tf as _tf
 
 os.environ['CUDA_DEVICE_ORDER'] = 'PCI_BUS_ID'      # See issue #152
-os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+os.environ['CUDA_VISIBLE_DEVICES'] = '1'            # GTX1080 only
 
 def run():
 
@@ -21,11 +21,11 @@ def run():
     leftovers = os.listdir(TENSORBOARD_ROOT_DIR)
     filename = next((x for x in leftovers if x.endswith('.meta')), None)
     if filename is not None:
-        cleanup_path = '{}\\{}'.format(TENSORBOARD_ROOT_DIR, filename[:-5])
+        cleanup_path = os.path.join(TENSORBOARD_ROOT_DIR, filename[:-5])
         for name in leftovers:
-            current_path = '{}\\{}'.format(TENSORBOARD_ROOT_DIR, name)
+            current_path = os.path.join(TENSORBOARD_ROOT_DIR, name)
             if os.path.isfile(current_path):
-                os.rename(current_path, '{}\\{}'.format(cleanup_path, name))
+                os.rename(current_path, os.path.join(cleanup_path, name))
 
     # graph setup
     graph = tf.Graph()
@@ -168,9 +168,9 @@ def run():
                             test_score += score
 
                             # save the generated images to track progress
-                            predictions_dir = '{}\\_{}'.format(TENSORBOARD_RUN_DIR, step)
+                            predictions_dir = os.path.join(TENSORBOARD_RUN_DIR, '_{}'.format(step))
                             Path(predictions_dir).mkdir(exist_ok=True)
-                            frames_queue.put(('{}\\{}_yHat.png'.format(predictions_dir, j), prediction[0]))
+                            frames_queue.put((os.path.join(predictions_dir, '{}_yHat.png'.format(j)), prediction[0]))
                             j += 1
                         except tf.errors.OutOfRangeError:
                             break

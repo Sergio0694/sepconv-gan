@@ -16,4 +16,7 @@ def _sepconv_grad(op, grad):
     grad -- the output gradient
     """
     
-    return sepconv_module.sepconv_grad(grad, op.inputs[0], op.inputs[1], op.inputs[2])
+    return list(sepconv_module.sepconv_grad(
+        grad,                       # output gradient
+        op.inputs[0],               # input image (constant)
+        op.inputs[1].shape[-1]))    # depth of the separable kernels

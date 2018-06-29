@@ -48,7 +48,7 @@ def load_test(path, window):
         for s in zip(groups, labels):
             seq = s[0][:len(s[0]) // 2] + [s[1]] + s[0][len(s[0]) // 2:]
             errors = [
-                int(calculate_image_difference('{}\\{}'.format(path, pair[0]), '{}\\{}'.format(path, pair[1]))[2])
+                int(calculate_image_difference(os.path.join(path, pair[0]), os.path.join(path, pair[1]))[2])
                 for pair in zip(seq, seq[1:])
             ]
             INFO('{} ---> {}, e={}'.format(s[0], s[1], errors))
@@ -113,17 +113,17 @@ def tf_load_images(samples, label, directory):
     '''
     
     x = np.array([
-        cv2.imread('{}\\{}'.format(str(directory)[2:-1], str(sample)[2:-1])).astype(np.float32)
+        cv2.imread(os.path.join(str(directory)[2:-1], str(sample)[2:-1])).astype(np.float32)
         for sample in samples
     ], dtype=np.float32, copy=False)
-    y = cv2.imread('{}\\{}'.format(str(directory)[2:-1], str(label)[2:-1])).astype(np.float32)
+    y = cv2.imread(os.path.join(str(directory)[2:-1], str(label)[2:-1])).astype(np.float32)
 
     return x, y
 
 def tf_load_image(sample, directory):
     '''Loads an image, clipping them to the current training size set.'''
 
-    image = cv2.imread('{}\\{}'.format(str(directory)[2:-1], str(sample)[2:-1])).astype(np.float32)
+    image = cv2.imread(os.path.join(str(directory)[2:-1], str(sample)[2:-1])).astype(np.float32)
 
     x_offset = randint(0, image.shape[1] - TRAINING_IMAGES_SIZE)
     y_offset = randint(0, image.shape[0] - TRAINING_IMAGES_SIZE)

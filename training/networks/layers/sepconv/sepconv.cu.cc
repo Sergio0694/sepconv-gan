@@ -4,7 +4,7 @@
 
 __global__ void SepconvKernel(
     const int ntasks,
-    const float* inputs,
+    const float* input,
     const float* kv,
     const float* kh,
     const int h, 
@@ -38,7 +38,7 @@ __global__ void SepconvKernel(
             if (y_t < 0 || y_t >= h || x_t < 0 || x_t >= w)
                 continue;
             result +=
-                inputs[_n_offset + (y_t * w + x_t) * 3 + ic]
+                input[_n_offset + (y_t * w + x_t) * 3 + ic]
                 * kv[_k_offset + iv]
                 * kh[_k_offset + ih];
         }
@@ -49,7 +49,7 @@ __global__ void SepconvKernel(
 #define THREADS_PER_BLOCK_FORWARD 512
 
  void SepconvKernelLauncher(
-    const float* inputs, 
+    const float* input, 
     const float* kv,
     const float* kh,
     const int n, 
@@ -60,7 +60,7 @@ __global__ void SepconvKernel(
 {
     int ntasks = n * h * w * 3;
     SepconvKernel<<<(ntasks + THREADS_PER_BLOCK_FORWARD - 1) / THREADS_PER_BLOCK_FORWARD, THREADS_PER_BLOCK_FORWARD>>>(
-        ntasks, inputs, kv, kh, h, w, kchannels, output);
+        ntasks, input, kv, kh, h, w, kchannels, output);
     cudaError_t cudaerr = cudaDeviceSynchronize();
     if (cudaerr != cudaSuccess)
         printf("SepConv launch failed with error \"%s\".\n", cudaGetErrorString(cudaerr));

@@ -37,7 +37,7 @@ REGISTER_OP("Sepconv")
 
 // GPU launcher
 void SepconvKernelLauncher(
-    const float* inputs, 
+    const float* input, 
     const float* kv,
     const float* kh,
     const int n, 

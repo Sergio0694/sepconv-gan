@@ -146,13 +146,13 @@ def run():
                         _, _, gen_score, gen_full_score, disc_score, summary = session.run(
                             [gen_optimizer, disc_optimizer, gen_own_loss, gen_loss, disc_loss, merged_summary_all],
                             feed_dict={eta: lr, training: True})
-                        RESET_LINE()
+                        RESET_LINE(True)
                         LOG('#{}\tgen_own: {:12.04f}, gen_full: {:12.04f}, disc: {:12.04f}'.format(step, gen_score, gen_full_score, disc_score))
                     else:
                         _, gen_score, summary = session.run(
                             [gen_optimizer, gen_own_loss, merged_summary_gen],
                             feed_dict={eta: lr, training: True})
-                        RESET_LINE()
+                        RESET_LINE(True)
                         LOG('#{}\tgen_own: {:12.04f}'.format(step, gen_score))
                     writer.add_summary(summary, samples)
 

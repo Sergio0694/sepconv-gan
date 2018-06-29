@@ -1,11 +1,9 @@
-from os.path import dirname, abspath
+import os
 import tensorflow as tf
 from tensorflow.python.framework import ops
-from tensorflow.python.ops import array_ops
-from tensorflow.python.ops import sparse_ops
 
-SEPCONV_SO_PATH = '{}/sepconv.so'.format(dirname(abspath(__file__)))
-sepconv_module = tf.load_op_library(SEPCONV_SO_PATH)
+SEPCONV_SO_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'sepconv', 'sepconv.so')
+SEPCONV_MODULE = tf.load_op_library(SEPCONV_SO_PATH)
  
 @ops.RegisterGradient("Sepconv")
 def _sepconv_grad(op, grad):
@@ -16,7 +14,8 @@ def _sepconv_grad(op, grad):
     grad -- the output gradient
     """
     
-    return list(sepconv_module.sepconv_grad(
+    kv_grad, kh_grad = SEPCONV_MODULE.sepconv_grad(
         grad,                       # output gradient
         op.inputs[0],               # input image (constant)
-        op.inputs[1].shape[-1]))    # depth of the separable kernels
+        op.inputs[1].shape[-1])     # depth of the separable kernels
+    return [None, kv_grad, kh_grad]

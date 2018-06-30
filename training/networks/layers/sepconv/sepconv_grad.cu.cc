@@ -49,11 +49,11 @@ __global__ void SepconvGradKernel(
                 continue;
 
             // Aggregate the output gradient across the batch
-            float result = 0.0;
-            for (int ic = 0; ic < 3; ic++)
-                result += 
-                    input[in * _3d_resolution + (y_t * w + x_t) * 3 + ic]
-                    * grad[_grad_offset + ic];
+            int _c_offset = in * _3d_resolution + (y_t * w + x_t) * 3;
+            float result = 
+                input[_c_offset] * grad[_grad_offset]
+                + input[_c_offset + 1] * grad[_grad_offset + 1]
+                + input[_c_offset + 2] * grad[_grad_offset + 2];
 
             // Add the partial gradient to the target row and column
             kv_grad[_k_offset + iv] += result * kh[_k_offset + ih];

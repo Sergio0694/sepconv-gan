@@ -56,16 +56,16 @@ def run():
             name='x')
         training = tf.placeholder(tf.bool, name='training_mode')
         with tf.variable_scope('generator', None, [x]):
-            raw_yHat = NETWORK_BUILDER(x / 255.0, training)
-            yHat = raw_yHat * 255.0
+            yHat = NETWORK_BUILDER(x / 255.0, training)
+            clipped_yHat = tf.clip_by_value(yHat, 0.0, 1.0)
 
         # discriminator setup
-        with tf.variable_scope('discriminator', None, [raw_yHat, x_true], reuse=tf.AUTO_REUSE):
+        with tf.variable_scope('discriminator', None, [clipped_yHat, x_true], reuse=tf.AUTO_REUSE):
             with tf.name_scope('true', [x_true]):
                 disc_true = inception_mini.get_network(x_true / 255.0)
-            with tf.name_scope('false', [raw_yHat]):
-                raw_yHat.set_shape([None, TRAINING_IMAGES_SIZE, TRAINING_IMAGES_SIZE, 3])
-                disc_false = inception_mini.get_network(raw_yHat)
+            with tf.name_scope('false', [clipped_yHat]):
+                clipped_yHat.set_shape([None, TRAINING_IMAGES_SIZE, TRAINING_IMAGES_SIZE, 3])
+                disc_false = inception_mini.get_network(clipped_yHat)
 
         # setup the loss function
         with tf.variable_scope('optimization', None, [yHat, y, disc_true, disc_false]):
@@ -73,7 +73,7 @@ def run():
 
             with tf.variable_scope('generator_opt', None, [yHat, y, disc_false, eta]):
                 with tf.variable_scope('generator_loss', None, [yHat, y, disc_false]):
-                    gen_own_loss = tf.reduce_mean((yHat - y) ** 2)
+                    gen_own_loss = tf.reduce_mean((yHat * 255.0 - y) ** 2)
                     gen_disc_loss = tf.contrib.gan.losses.wargs.modified_generator_loss(disc_false) # ignored if discriminator is disabled
                     gen_loss = gen_own_loss + gen_disc_loss
                     gen_loss_with_NaN_check = tf.verify_tensor_all_finite(gen_loss if DISCRIMINATOR_ACTIVATION_EPOCH is not None else gen_own_loss, 'NaN found in loss :(', 'NaN_check_output_loss')
@@ -93,8 +93,9 @@ def run():
                                         else _tf.minimize_with_clipping(disc_adam, disc_loss, DISCRIMINATOR_GRADIENT_CLIP, scope='discriminator')
 
         # output image
-        with tf.variable_scope('inference', None, [yHat]):
-            yHat_proof = tf.verify_tensor_all_finite(yHat, 'NaN found in output image :(', 'NaN_check_output')
+        with tf.variable_scope('inference', None, [clipped_yHat]):
+            yHat_proof = tf.verify_tensor_all_finite(clipped_yHat, 'NaN found in output image :(', 'NaN_check_output') * 255.0
+            test_clipped_loss = tf.reduce_mean((yHat_proof - y) ** 2)
             uint8_img = tf.cast(yHat_proof, tf.uint8, name='uint8_img')
         
         # summaries
@@ -164,7 +165,7 @@ def run():
                     test_score, j = 0, 0
                     while True:
                         try:
-                            score, prediction = session.run([gen_own_loss, uint8_img], feed_dict={training: False})
+                            score, prediction = session.run([test_clipped_loss, uint8_img], feed_dict={training: False})
                             test_score += score
 
                             # save the generated images to track progress

@@ -18,11 +18,11 @@ def test_sepconv():
         # dC/dkv
         error = tf.test.compute_gradient_error(kv_t, kv_t.shape, y, image_t.shape, kv)
         print('dC/dkv error: {}'.format(error))
-        assert error < 1e-5
+        assert error < 1e-3
 
         error = tf.test.compute_gradient_error(kh_t, kh_t.shape, y, image_t.shape, kh)
         print('dC/dkh error: {}'.format(error))
-        assert error < 1e-5
+        assert error < 1e-3
 
 if __name__ == '__main__':
 

@@ -6,6 +6,8 @@ __global__ void SepconvGradKernel(
     const int ntasks,
     const float* grad,
     const float* input,
+    const float* kv,
+    const float* kh,
     const int n,
     const int h, 
     const int w,
@@ -54,8 +56,8 @@ __global__ void SepconvGradKernel(
                     * grad[_grad_offset + ic];
 
             // Add the partial gradient to the target row and column
-            kv_grad[_k_offset + iv] += result;
-            kh_grad[_k_offset + ih] += result;
+            kv_grad[_k_offset + iv] += result * kh[_k_offset + ih];
+            kh_grad[_k_offset + ih] += result * kv[_k_offset + iv];
         }
     }
 }
@@ -65,6 +67,8 @@ __global__ void SepconvGradKernel(
 void SepconvGradKernelLauncher(
     const float* grad,
     const float* input,
+    const float* kv,
+    const float* kh,
     const int n, 
     const int h, 
     const int w,
@@ -74,7 +78,7 @@ void SepconvGradKernelLauncher(
 {
     int ntasks = n * h * w;
     SepconvGradKernel<<<(ntasks + THREADS_PER_BLOCK_BACKWARD - 1) / THREADS_PER_BLOCK_BACKWARD, THREADS_PER_BLOCK_BACKWARD>>>(
-        ntasks, grad, input, n, h, w, kchannels, kv_grad, kh_grad);
+        ntasks, grad, input, kv, kh, n, h, w, kchannels, kv_grad, kh_grad);
     cudaError_t cudaerr = cudaDeviceSynchronize();
     if (cudaerr != cudaSuccess)
         printf("SepConv launch failed with error \"%s\".\n", cudaGetErrorString(cudaerr));

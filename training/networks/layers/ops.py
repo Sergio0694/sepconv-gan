@@ -17,5 +17,6 @@ def _sepconv_grad(op, grad):
     kv_grad, kh_grad = SEPCONV_MODULE.sepconv_grad(
         grad,                       # output gradient
         op.inputs[0],               # input image (constant)
-        op.inputs[1].shape[-1])     # depth of the separable kernels
+        op.inputs[1],
+        op.inputs[2])               # kernels used in the forward pass
     return [None, kv_grad, kh_grad]

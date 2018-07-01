@@ -21,7 +21,7 @@ def get_network_v1(x, training):
     def subnet(tensor):
         sub_conv1 = tf.layers.conv2d(tensor, 64, 3, activation=tf.nn.leaky_relu, padding='same')
         sub_conv2 = tf.layers.conv2d(sub_conv1, 64, 3, activation=tf.nn.leaky_relu, padding='same')
-        sub_conv3 = tf.layers.conv2d(sub_conv2, 64, 3, activation=tf.nn.leaky_relu, padding='same')
+        sub_conv3 = tf.layers.conv2d(sub_conv2, 51, 3, activation=tf.nn.leaky_relu, padding='same')
         sub_up = tf.image.resize_bilinear(sub_conv3, [x_shape[1], x_shape[2]])
         return tf.layers.conv2d(sub_up, 51, 3, activation=tf.nn.leaky_relu, padding='same')
 

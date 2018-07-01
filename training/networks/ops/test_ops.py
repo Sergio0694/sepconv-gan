@@ -1,8 +1,8 @@
 import argparse
 import numpy as np
 import tensorflow as tf
-from ops import SEPCONV_MODULE
 from cpu_ops import sepconv
+from gpu_ops import SEPCONV_MODULE
 
 def ASSERT_EQUALS(v1, v2):
     '''Checks whether or not two arrays have the same shape and contents.'''

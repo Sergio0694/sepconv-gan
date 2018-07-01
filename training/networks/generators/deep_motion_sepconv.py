@@ -1,6 +1,6 @@
 import tensorflow as tf
 import networks._tf as _tf
-from networks.layers.ops import SEPCONV_MODULE
+from networks.ops.gpu_ops import SEPCONV_MODULE
 
 def get_network_v1(x, training):
 

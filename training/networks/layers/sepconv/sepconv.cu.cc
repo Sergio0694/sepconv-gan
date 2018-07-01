@@ -26,19 +26,21 @@ __global__ void SepconvKernel(
     int _k_offset = ((in * h + iy) * w + ix) * kchannels;
     int _n_offset = in * h * w * 3;
     int kc_2 = kchannels / 2;
+
+    // Limits
+    int iv_low = iy >= kc_2 ? 0 : kc_2 - iy;
+    int iv_high = iy + kc_2 < h ? kchannels : kchannels - (iy + kc_2 - h) - 1;
+    int ih_low = ix >= kc_2 ? 0 : kc_2 - ix;
+    int ih_high = ix + kc_2 < w ? kchannels : kchannels - (ix + kc_2 - w) - 1;
     
     // Perform the separable convolution
     float result = 0.0;
-    for (int iv = 0; iv < kchannels; iv++)
+    for (int iv = iv_low; iv < iv_high; iv++)
     {
-        for (int ih = 0; ih < kchannels; ih++)
+        for (int ih = ih_low; ih < ih_high; ih++)
         {
-            int y_t = iy - kc_2 + iv;
-            int x_t = ix - kc_2 + ih;
-            if (y_t < 0 || y_t >= h || x_t < 0 || x_t >= w)
-                continue;
             result +=
-                input[_n_offset + (y_t * w + x_t) * 3 + ic]
+                input[_n_offset + ((iy - kc_2 + iv) * w + (ix - kc_2 + ih)) * 3 + ic]
                 * kv[_k_offset + iv]
                 * kh[_k_offset + ih];
         }

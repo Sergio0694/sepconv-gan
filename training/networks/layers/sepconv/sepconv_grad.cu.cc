@@ -36,20 +36,20 @@ __global__ void SepconvGradKernel(
         kv_grad[_k_offset + ivh] = 0.0;
         kh_grad[_k_offset + ivh] = 0.0;
     }
+
+    // Limits
+    int iv_low = iy >= kc_2 ? 0 : kc_2 - iy;
+    int iv_high = iy + kc_2 < h ? kchannels : kchannels - (iy + kc_2 - h) - 1;
+    int ih_low = ix >= kc_2 ? 0 : kc_2 - ix;
+    int ih_high = ix + kc_2 < w ? kchannels : kchannels - (ix + kc_2 - w) - 1;
     
     // Calculate the gradients
-    for (int iv = 0; iv < kchannels; iv++)
+    for (int iv = iv_low; iv < iv_high; iv++)
     {
-        for (int ih = 0; ih < kchannels; ih++)
+        for (int ih = ih_low; ih < ih_high; ih++)
         {
-            // Get the coordinates from the image patch for (iv, ih)
-            int y_t = iy - kc_2 + iv;
-            int x_t = ix - kc_2 + ih;
-            if (y_t < 0 || y_t >= h || x_t < 0 || x_t >= w)
-                continue;
-
             // Aggregate the output gradient across the batch
-            int _c_offset = in * _3d_resolution + (y_t * w + x_t) * 3;
+            int _c_offset = in * _3d_resolution + ((iy - kc_2 + iv) * w + (ix - kc_2 + ih)) * 3;
             float result = 
                 input[_c_offset] * grad[_grad_offset]
                 + input[_c_offset + 1] * grad[_grad_offset + 1]

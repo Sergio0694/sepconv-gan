@@ -147,6 +147,13 @@ def tf_preprocess_train_images(samples, label):
     
     assert label.shape[0] >= TRAINING_IMAGES_SIZE and label.shape[1] >= TRAINING_IMAGES_SIZE
 
+    # randomly resize the images to cover more view area with a single crop
+    if randint(0, 3) == 0:
+        y_t = randint(TRAINING_IMAGES_SIZE, label.shape[0] - 2 * MAX_FLOW) + 2 * MAX_FLOW
+        x_t = y_t * label.shape[1] // label.shape[0]
+        samples = np.array([cv2.resize(sample, (x_t, y_t)) for sample in samples], dtype=np.float32, copy=False)
+        label = cv2.resize(label, (x_t, y_t))
+
     # setup
     max_flow_x = min(MAX_FLOW, label.shape[1] - TRAINING_IMAGES_SIZE)
     max_flow_y = min(MAX_FLOW, label.shape[0] - TRAINING_IMAGES_SIZE)

@@ -1,11 +1,13 @@
+from collections import defaultdict
 from multiprocessing import cpu_count, Process, Queue
 import os
+import cv2
+import numpy as np
 from helpers.ffmpeg_helper import *
 from helpers.logger import LOG, INFO, BAR, RESET_LINE
 from __MACRO__ import *
 
-SUPPORTED_VIDEO_FORMATS = ['mkv', 'avi', 'mp4']
-SUPPORTED_VIDEO_EXTENSIONS = tuple(['.{}'.format(extension) for extension in SUPPORTED_VIDEO_FORMATS])
+SUPPORTED_VIDEO_FORMATS = ('.mkv', '.avi', '.mp4')
 
 def load_files(source_paths):
     '''Loads the list of all existing video files with the supported format from the input source directories.
@@ -17,7 +19,7 @@ def load_files(source_paths):
     for source_path in source_paths:
         for subdir, _, files in os.walk(source_path):
             for f in files:
-                if f.endswith(SUPPORTED_VIDEO_EXTENSIONS):
+                if f.endswith(SUPPORTED_VIDEO_FORMATS):
                     source_files += [os.path.join(subdir, f)]
     return source_files
 
@@ -25,7 +27,8 @@ def process_video_file(queue, cpu_id, output_path, seconds, splits, min_duration
     '''Processes a video file in the background.'''
 
     # output folder for the current process
-    target_path = os.mkdir(os.path.join(output_path, '_{}'.format(i)))
+    target_path = os.path.join(output_path, '_{}'.format(cpu_id))
+    os.mkdir(target_path)
 
     while True:
 
@@ -46,16 +49,61 @@ def process_video_file(queue, cpu_id, output_path, seconds, splits, min_duration
         step = duration // (splits + 1)
         for chunk in range(splits):
             if not extract_frames(
-                video_path, target_path, resolution,
+                video_path, target_path, None if resolution is None else (resolution, -1),
                 step * (chunk + 1) - (seconds // 2), # offset to before the current chunk
                 seconds,
-                'p{}_v{}_s{}_'.format(cpu_id, i, chunk), encoding):
+                'v{}-s{}_'.format(i, chunk), encoding):
                 INFO('{} FAIL at {}'.format(video_path, chunk))
                 break
-        INFO('{} OK'.format(video_path))
-        
+        INFO('{} OK [_{}]'.format(video_path, cpu_id))
 
-def build_dataset(source_paths, output_path, seconds, splits, resolution, encoding, min_variance, min_diff_threshold, max_diff_threshold):
+def preprocess_frames(frames_folder, extension, min_variance, min_diff_threshold, max_diff_threshold):
+
+    # list the frames and build a mapping for each video chunk
+    frames = os.listdir(frames_folder)
+    if not frames:
+        return
+    mapping = defaultdict(list)
+    for frame in frames:
+        key = frame.split('_')[0]
+        mapping[key] += [frame]
+
+    for key in mapping.keys():
+        chunk = mapping[key]
+
+        # load the images in the current video chunk
+        data_map = {
+            frame: cv2.imread(os.path.join(frames_folder, frame) 
+            for frame in chunk)
+        }
+        size = np.prod(next(iter(data_map.values()))) # size of the first frame in the current sequence
+
+        # calculate the error between each consecutive pair of frames
+        errors_map = {
+            pair[0]: np.sum((data_map[pair[0]] - data_map[pair[1]]) ** 2, dtype=np.float32) / size
+            for pair in zip(chunk, chunk[1:])
+        }
+
+        # split the frames into valid subsequences
+        splits = defaultdict(list)
+        i = 0
+        splits[i] = chunk[0] # base case
+        for j in range(1, len(chunk)):
+            if errors_map[chunk[j - 1]] < min_diff_threshold or errors_map[chunk[j - 1]] > max_diff_threshold or \
+                np.sum(cv2.meanStdDev(data_map[chunk[j]])[1]) / 3 < min_variance:
+                i += 1
+            splits[i] += [chunk[j]]
+        
+        # rename the valid sequences, delete the other frames
+        for b, split_key in enumerate(splits):
+            if len(splits[split_key]) >= 3:
+                for s, frame in enumerate(splits[split_key]):
+                    os.rename(os.path.join(frames_folder, frame), os.path.join(frames_folder, '{}-b{}_{}{}'.format(key, b, s, extension)))
+            else:
+                for frame in splits[split_key]:
+                    os.remove(os.path.join(frames_folder, frame))
+
+def build_dataset(source_paths, output_path, seconds, splits, resolution, extension, min_variance, min_diff_threshold, max_diff_threshold):
     '''Builds a dataset in the target directory by reading all the existing movie
     files from the source directory and converting them to the specified resolution.
     
@@ -64,16 +112,15 @@ def build_dataset(source_paths, output_path, seconds, splits, resolution, encodi
     seconds(int) -- the duration in seconds of each extracted video clip
     splits(int) -- the number of separate video sections to use to extract the frames
     resolution(int) -- the desired horizontal resolution of the exported frames
-    encoding(str) -- the extension (and file format) for the output frames
+    extension(str) -- the extension (and file format) for the output frames
     min_variance(int) -- the minimum variance value for a valid video frame
     min_diff_threshold(int) -- the minimum difference between consecutive video frames
     max_diff_threshold(int) -- the maximum difference between consecutive video frames
     '''
 
-    assert seconds > 1                              # what's the point otherwise?
+    assert seconds >= 1                             # what's the point otherwise?
     assert splits >= 1
     assert resolution is None or resolution >= 240  # ensure minimum resolution
-    assert encoding in SUPPORTED_VIDEO_FORMATS      # ensure valid output format
 
     min_duration = seconds * splits * 4 # some margin just in case
 
@@ -82,20 +129,33 @@ def build_dataset(source_paths, output_path, seconds, splits, resolution, encodi
     LOG('{} video file(s) to process'.format(len(video_files)))
 
     # setup the workers
-    with Queue() as queue:
-        processes = [
-            Process(target=process_video_file, args=[queue, cpu_id, output_path, seconds, splits, min_duration, resolution, encoding])
-            for cpu_id in cpu_count()
-        ]
-        for process in processes:
-            process.start()
+    queue = Queue()
+    processes = [
+        Process(target=process_video_file, args=[queue, cpu_id, output_path, seconds, splits, min_duration, resolution, extension])
+        for cpu_id in range(cpu_count())
+    ]
+    for process in processes:
+        process.start()
 
-        # process the source video files
-        for v, video_file in enumerate(video_files):
-            queue.put((v, video_file))
+    # process the source video files
+    for v, video_file in enumerate(video_files):
+        queue.put((v, video_file))
 
-        # wait for completion
-        for _ in range(cpu_count()):
-            queue.put(None)
-        for process in processes:
-            process.join()
+    # wait for completion
+    for _ in range(cpu_count()):
+        queue.put(None)
+    for process in processes:
+        process.join()
+    queue.close()
+    exit(0)
+
+    # preprocess the extracted frames
+    subdirs = os.listdir(output_path)
+    processes = [
+        Process(target=preprocess_frames, args=[os.path.join(output_path, subdir), extension, min_variance, min_diff_threshold, max_diff_threshold])
+        for subdir in subdirs
+    ]
+    for process in processes:
+        process.start()
+    for process in processes:
+        process.join()

@@ -10,7 +10,7 @@ def setup():
     parser.add_argument('-source', nargs='+', help='The source folder that contains the video files. Multiple folders can be used, if needed.', required=True)
     parser.add_argument('--split-duration', help='The duration, in seconds, of each split video clip', required=True)
     parser.add_argument('-splits', help='The number of video clips to extract from each source video.', required=True)
-    parser.add_argument('-resulution', default=None, help='The optional scaling of the video (horizontal resolution).')
+    parser.add_argument('-resolution', default=None, help='The optional scaling of the video (horizontal resolution).')
     parser.add_argument('--frame-quality', default='jpg', help='The format of intermediate frames [jpg|png|bmp].')
     parser.add_argument('--min-variance', default=IMAGE_MIN_VARIANCE_THRESHOLD, help='The minimum variance value for a valid video frame')
     parser.add_argument('--min-diff-threshold', default=IMAGE_DIFF_MIN_THRESHOLD, help='The minimum difference between consecutive video frames')
@@ -19,6 +19,8 @@ def setup():
     args = vars(parser.parse_args())
 
     def ensure_valid_int(key, check, error):
+        if type(args[key]) is int:
+            return # default value
         if not args[key].isdigit() or not check(int(args[key])):
             raise ValueError(error)
         else:
@@ -29,9 +31,10 @@ def setup():
         raise ValueError('One of the input folders does not exist')
     ensure_valid_int('split_duration', lambda x: x >= 1, 'The duration of each split must be at least equal to 1')
     ensure_valid_int('splits', lambda x: x >= 1, 'The number of splits must be at least equal to 1')
-    ensure_valid_int('resulution', lambda x: x >= 240, 'The resulution must be at least equal to 240')
+    ensure_valid_int('resolution', lambda x: x >= 240, 'The resolution must be at least equal to 240')
     if args['frame_quality'] not in ['jpg', 'png', 'bmp']:
         raise ValueError('The frame quality must be either jpb, png or bmp.')
+    args['frame_quality'] = '.{}'.format(args['frame_quality'])
     ensure_valid_int('min_variance', lambda x: x >= 0, 'The min variance must be a positive number')
     ensure_valid_int('min_diff_threshold', lambda x: x >= 0, 'The minimum difference threshold must be a positive number')
     ensure_valid_int('max_diff_threshold', lambda x: x >= args['min_diff_threshold'] + 100, 'The maximum difference threshold must be greater than the minimum threshold')

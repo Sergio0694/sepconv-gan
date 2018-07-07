@@ -1,7 +1,8 @@
+import os
 from pathlib import Path
 from subprocess import call, Popen, PIPE, STDOUT, TimeoutExpired
 
-def extract_frames(video_path, output_folder, scale=None, start=0, duration=60, suffix='', extension='jpg', timeout=10):
+def extract_frames(video_path, output_folder, scale=None, start=0, duration=60, suffix='', extension='.jpg', timeout=10):
     '''Exports a series of frames from the input video to the specified folder.
 
     video_path(str) -- the path to the input video
@@ -13,6 +14,7 @@ def extract_frames(video_path, output_folder, scale=None, start=0, duration=60, 
     extension(str) -- the preferred image extension for the exported frames (jpg|png|bmp)
     '''
     
+    assert video_path is not None and output_folder is not None
     assert timeout is None or timeout >= 10
     assert start >= 0
     assert duration >= 1 # really?
@@ -21,36 +23,26 @@ def extract_frames(video_path, output_folder, scale=None, start=0, duration=60, 
             and (scale[1] >= 240 or scale[1] == -1) and not (scale[0] == -1 and scale[1] == -1))
 
     Path(output_folder).mkdir(exist_ok=True)
-    args = [
-        'ffmpeg',
-        '-i', video_path,
-        '-to', str(duration), # -ss resets the timestep to target start time
-        '-q:v', '1',
-        '-qmin', '1',
-        '-qmax', '1',
-        '-pix_fmt', 'rgb24',
-        '-v', 'quiet',
-        '{}\\{}%03d.{}'.format(output_folder, suffix, extension)
-    ]
-
-    # optional start time
-    if start > 0:
-        args.insert(1, '-ss')
-        args.insert(2, str(start))
-
-    # optional rescaling
-    if scale is not None:
-        args.insert(4, '-vf')
-        args.insert(5, 'scale={}:{}'.format(scale[0], scale[1]))
+    args = (
+        ['ffmpeg'] +
+        (['-ss', str(start)] if start > 0 else []) + # optional start time
+        ['-i', '"{}"'.format(video_path)] +
+        ['-to', str(duration)] + # -ss resets the timestep to target start time
+        (['-vf', 'scale={}:{}'.format(scale[0], scale[1])] if scale is not None else []) + # optional rescaling
+        ['-q:v', '1'] +
+        ['-qmin', '1'] +
+        ['-qmax', '1'] +
+        ['-v', 'quiet'] +
+        ['"{}"'.format(os.path.join(output_folder, '{}%03d{}'.format(suffix, extension)))])
 
     if timeout:
         try:
-            call(args, timeout=10)
+            Popen(' '.join(args), shell=True, stdout=PIPE, stderr=STDOUT).communicate(timeout=timeout)
             return True
         except TimeoutExpired:
             return False
     else:
-        call(args)
+        Popen(' '.join(args), shell=True, stdout=PIPE, stderr=STDOUT).communicate()
         return True
 
 def get_video_duration(video_path):
@@ -60,7 +52,8 @@ def get_video_duration(video_path):
     '''
 
     result = Popen(
-        'ffprobe -i "{}" -show_entries format=duration -v quiet -of csv="p=0"'.format(video_path), 
+        'ffprobe -i "{}" -show_entries format=duration -v quiet -of csv="p=0"'.format(video_path),
+        shell=True,
         stdout=PIPE,
         stderr=STDOUT)
     output = result.communicate()

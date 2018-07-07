@@ -70,13 +70,15 @@ def preprocess_frames(frames_folder, extension, min_variance, min_diff_threshold
 
     for key in mapping.keys():
         chunk = mapping[key]
+        chunk.sort()
 
         # load the images in the current video chunk
         data_map = {
-            frame: cv2.imread(os.path.join(frames_folder, frame) 
-            for frame in chunk)
+            frame: cv2.imread(os.path.join(frames_folder, frame))
+            for frame in chunk
         }
-        size = np.prod(next(iter(data_map.values()))) # size of the first frame in the current sequence
+        size = np.prod(next(iter(data_map.values())).shape) # size of the first frame in the current sequence
+        assert size > 0
 
         # calculate the error between each consecutive pair of frames
         errors_map = {
@@ -87,7 +89,7 @@ def preprocess_frames(frames_folder, extension, min_variance, min_diff_threshold
         # split the frames into valid subsequences
         splits = defaultdict(list)
         i = 0
-        splits[i] = chunk[0] # base case
+        splits[i] = [chunk[0]] # base case
         for j in range(1, len(chunk)):
             if errors_map[chunk[j - 1]] < min_diff_threshold or errors_map[chunk[j - 1]] > max_diff_threshold or \
                 np.sum(cv2.meanStdDev(data_map[chunk[j]])[1]) / 3 < min_variance:
@@ -147,7 +149,6 @@ def build_dataset(source_paths, output_path, seconds, splits, resolution, extens
     for process in processes:
         process.join()
     queue.close()
-    exit(0)
 
     # preprocess the extracted frames
     subdirs = os.listdir(output_path)

@@ -1,7 +1,11 @@
 import argparse
 import os
-from __MACRO__ import IMAGE_MIN_VARIANCE_THRESHOLD, IMAGE_DIFF_MIN_THRESHOLD, IMAGE_DIFF_MAX_THRESHOLD
+from shutil import rmtree
 from dataset.dataset_builder import build_dataset
+
+IMAGE_DIFF_MAX_THRESHOLD = 55
+IMAGE_DIFF_MIN_THRESHOLD = 14
+IMAGE_MIN_VARIANCE_THRESHOLD = 8
 
 def setup():
 
@@ -40,6 +44,12 @@ def setup():
     ensure_valid_int('max_diff_threshold', lambda x: x >= args['min_diff_threshold'] + 100, 'The maximum difference threshold must be greater than the minimum threshold')
     if not os.path.isdir(args['output']):
         raise ValueError('The output folder does not exist')
+
+    # cleanup
+    for subdir in os.listdir(args['output']):
+        full_path = os.path.join(args['output'], subdir)
+        if os.path.isdir(full_path):
+            rmtree(full_path)
 
     # execute
     build_dataset(

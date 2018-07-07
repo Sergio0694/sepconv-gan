@@ -33,7 +33,7 @@ def extract_frames(video_path, output_folder, scale=None, start=0, duration=60, 
         ['-qmin', '1'] +
         ['-qmax', '1'] +
         ['-v', 'quiet'] +
-        ['"{}"'.format(os.path.join(output_folder, '{}%03d{}'.format(suffix, extension)))])
+        ['"{}"'.format(os.path.join(output_folder, '{}%05d{}'.format(suffix, extension)))])
 
     if timeout:
         try:

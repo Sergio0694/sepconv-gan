@@ -100,7 +100,7 @@ def preprocess_frames(frames_folder, extension, min_variance, min_diff_threshold
             else:
                 mean, var = cv2.meanStdDev(data_map[chunk[j]])
                 if np.sum(var) / 3 < min_variance or \
-                    np.all(np.isclose(mean, mean[0], atol=1.0)) and np.all(np.isclose(var, var[0], atol=1.0)):
+                    color and np.all(np.isclose(mean, mean[0], atol=1.0)) and np.all(np.isclose(var, var[0], atol=1.0)):
                     i += 1
             if len(splits[i]) < max_length:
                 splits[i] += [chunk[j]]

@@ -57,7 +57,7 @@ def process_video_file(queue, cpu_id, output_path, seconds, splits, min_duration
                 break
         INFO('{} OK [_{}]'.format(video_path, cpu_id))
 
-def preprocess_frames(frames_folder, extension, min_variance, min_diff_threshold, max_diff_threshold):
+def preprocess_frames(frames_folder, extension, min_variance, min_diff_threshold, max_diff_threshold, max_length):
 
     # list the frames and build a mapping for each video chunk
     frames = os.listdir(frames_folder)
@@ -88,13 +88,17 @@ def preprocess_frames(frames_folder, extension, min_variance, min_diff_threshold
 
         # split the frames into valid subsequences
         splits = defaultdict(list)
+        exceeding = []
         i = 0
         splits[i] = [chunk[0]] # base case
         for j in range(1, len(chunk)):
             if errors_map[chunk[j - 1]] < min_diff_threshold or errors_map[chunk[j - 1]] > max_diff_threshold or \
                 np.sum(cv2.meanStdDev(data_map[chunk[j]])[1]) / 3 < min_variance:
                 i += 1
-            splits[i] += [chunk[j]]
+            if len(splits[i]) < max_length:
+                splits[i] += [chunk[j]]
+            else:
+                exceeding += [chunk[j]]
         
         # rename the valid sequences, delete the other frames
         for b, split_key in enumerate(splits):
@@ -104,8 +108,10 @@ def preprocess_frames(frames_folder, extension, min_variance, min_diff_threshold
             else:
                 for frame in splits[split_key]:
                     os.remove(os.path.join(frames_folder, frame))
+        for frame in exceeding:
+            os.remove(os.path.join(frames_folder, frame))
 
-def build_dataset(source_paths, output_path, seconds, splits, resolution, extension, min_variance, min_diff_threshold, max_diff_threshold):
+def build_dataset(source_paths, output_path, seconds, splits, resolution, extension, min_variance, min_diff_threshold, max_diff_threshold, max_length):
     '''Builds a dataset in the target directory by reading all the existing movie
     files from the source directory and converting them to the specified resolution.
     
@@ -118,6 +124,7 @@ def build_dataset(source_paths, output_path, seconds, splits, resolution, extens
     min_variance(int) -- the minimum variance value for a valid video frame
     min_diff_threshold(int) -- the minimum difference between consecutive video frames
     max_diff_threshold(int) -- the maximum difference between consecutive video frames
+    max_length(int) -- the maximum length of a series of consecutive frames
     '''
 
     assert seconds >= 1                             # what's the point otherwise?
@@ -153,7 +160,7 @@ def build_dataset(source_paths, output_path, seconds, splits, resolution, extens
     # preprocess the extracted frames
     subdirs = os.listdir(output_path)
     processes = [
-        Process(target=preprocess_frames, args=[os.path.join(output_path, subdir), extension, min_variance, min_diff_threshold, max_diff_threshold])
+        Process(target=preprocess_frames, args=[os.path.join(output_path, subdir), extension, min_variance, min_diff_threshold, max_diff_threshold, max_length])
         for subdir in subdirs
     ]
     for process in processes:

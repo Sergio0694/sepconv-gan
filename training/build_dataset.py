@@ -53,6 +53,8 @@ def setup():
         full_path = os.path.join(args['output'], subdir)
         if os.path.isdir(full_path):
             rmtree(full_path)
+        else:
+            os.remove(full_path)
 
     # execute
     build_dataset(

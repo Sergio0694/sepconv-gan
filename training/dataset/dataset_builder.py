@@ -1,6 +1,7 @@
 from collections import defaultdict
 from multiprocessing import cpu_count, Process, Queue
 import os
+from shutil import rmtree
 import cv2
 import numpy as np
 from helpers.ffmpeg_helper import *
@@ -88,7 +89,6 @@ def preprocess_frames(frames_folder, extension, min_variance, min_diff_threshold
 
         # split the frames into valid subsequences
         splits = defaultdict(list)
-        exceeding = []
         i = 0
         splits[i] = [chunk[0]] # base case
         for j in range(1, len(chunk)):
@@ -97,19 +97,13 @@ def preprocess_frames(frames_folder, extension, min_variance, min_diff_threshold
                 i += 1
             if len(splits[i]) < max_length:
                 splits[i] += [chunk[j]]
-            else:
-                exceeding += [chunk[j]]
         
         # rename the valid sequences, delete the other frames
+        root_dir = os.path.dirname(frames_folder)
         for b, split_key in enumerate(splits):
             if len(splits[split_key]) >= 3:
                 for s, frame in enumerate(splits[split_key]):
-                    os.rename(os.path.join(frames_folder, frame), os.path.join(frames_folder, '{}-b{}_{}{}'.format(key, b, s, extension)))
-            else:
-                for frame in splits[split_key]:
-                    os.remove(os.path.join(frames_folder, frame))
-        for frame in exceeding:
-            os.remove(os.path.join(frames_folder, frame))
+                    os.rename(os.path.join(frames_folder, frame), os.path.join(root_dir, '{}-b{}_{}{}'.format(key, b, s, extension)))
 
 def build_dataset(source_paths, output_path, seconds, splits, resolution, extension, min_variance, min_diff_threshold, max_diff_threshold, max_length):
     '''Builds a dataset in the target directory by reading all the existing movie
@@ -167,3 +161,7 @@ def build_dataset(source_paths, output_path, seconds, splits, resolution, extens
         process.start()
     for process in processes:
         process.join()
+
+    # cleanup
+    for subdir in subdirs:
+        rmtree(os.path.join(output_path, subdir))

@@ -132,6 +132,7 @@ def build_dataset(source_paths, output_path, seconds, splits, resolution, extens
     min_duration = seconds * splits * 4 # some margin just in case
 
     # load the list of video files
+    LOG('Loading source files')
     video_files = load_files(source_paths)
     LOG('{} video file(s) to process'.format(len(video_files)))
 
@@ -143,10 +144,12 @@ def build_dataset(source_paths, output_path, seconds, splits, resolution, extens
     ]
     for process in processes:
         process.start()
+    LOG('Workers started')
 
     # process the source video files
     for v, video_file in enumerate(video_files):
         queue.put((v, video_file))
+    LOG('Queue ready')
 
     # wait for completion
     for _ in range(cpu_count()):
@@ -154,6 +157,7 @@ def build_dataset(source_paths, output_path, seconds, splits, resolution, extens
     for process in processes:
         process.join()
     queue.close()
+    LOG('Frames extraction completed')
 
     # preprocess the extracted frames
     subdirs = os.listdir(output_path)
@@ -163,9 +167,11 @@ def build_dataset(source_paths, output_path, seconds, splits, resolution, extens
     ]
     for process in processes:
         process.start()
+    LOG('Preprocessing workers started')
     for process in processes:
         process.join()
 
     # cleanup
+    LOG('Cleanup')
     for subdir in subdirs:
         rmtree(os.path.join(output_path, subdir))

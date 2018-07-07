@@ -61,7 +61,7 @@ def process_video_file(queue, cpu_id, output_path, seconds, splits, min_duration
         if success:
             INFO('{} OK [_{}]'.format(video_path, cpu_id))
 
-def preprocess_frames(frames_folder, extension, min_variance, min_diff_threshold, max_diff_threshold, max_length):
+def preprocess_frames(frames_folder, extension, min_variance, min_diff_threshold, max_diff_threshold, max_length, color):
 
     # list the frames and build a mapping for each video chunk
     frames = os.listdir(frames_folder)
@@ -95,9 +95,13 @@ def preprocess_frames(frames_folder, extension, min_variance, min_diff_threshold
         i = 0
         splits[i] = [chunk[0]] # base case
         for j in range(1, len(chunk)):
-            if errors_map[chunk[j - 1]] < min_diff_threshold or errors_map[chunk[j - 1]] > max_diff_threshold or \
-                np.sum(cv2.meanStdDev(data_map[chunk[j]])[1]) / 3 < min_variance:
+            if errors_map[chunk[j - 1]] < min_diff_threshold or errors_map[chunk[j - 1]] > max_diff_threshold:
                 i += 1
+            else:
+                mean, var = cv2.meanStdDev(data_map[chunk[j]])
+                if np.sum(var) / 3 < min_variance or \
+                    np.all(np.isclose(mean, mean[0], atol=1.0)) and np.all(np.isclose(var, var[0], atol=1.0)):
+                    i += 1
             if len(splits[i]) < max_length:
                 splits[i] += [chunk[j]]
         
@@ -108,7 +112,10 @@ def preprocess_frames(frames_folder, extension, min_variance, min_diff_threshold
                 for s, frame in enumerate(splits[split_key]):
                     os.rename(os.path.join(frames_folder, frame), os.path.join(root_dir, '{}-b{}_{}{}'.format(key, b, s, extension)))
 
-def build_dataset(source_paths, output_path, seconds, splits, resolution, extension, min_variance, min_diff_threshold, max_diff_threshold, max_length, timeout):
+def build_dataset(
+    source_paths, output_path, seconds, splits, resolution, extension, 
+    min_variance, min_diff_threshold, max_diff_threshold, max_length, color,
+    timeout):
     '''Builds a dataset in the target directory by reading all the existing movie
     files from the source directory and converting them to the specified resolution.
     
@@ -122,6 +129,7 @@ def build_dataset(source_paths, output_path, seconds, splits, resolution, extens
     min_diff_threshold(int) -- the minimum difference between consecutive video frames
     max_diff_threshold(int) -- the maximum difference between consecutive video frames
     max_length(int) -- the maximum length of a series of consecutive frames
+    color(bool) -- indicates whether or not to filter out grayscale images
     timeout(int) -- timeout for the frames extraction operation
     '''
 
@@ -162,7 +170,7 @@ def build_dataset(source_paths, output_path, seconds, splits, resolution, extens
     # preprocess the extracted frames
     subdirs = os.listdir(output_path)
     processes = [
-        Process(target=preprocess_frames, args=[os.path.join(output_path, subdir), extension, min_variance, min_diff_threshold, max_diff_threshold, max_length])
+        Process(target=preprocess_frames, args=[os.path.join(output_path, subdir), extension, min_variance, min_diff_threshold, max_diff_threshold, max_length, color])
         for subdir in subdirs
     ]
     for process in processes:

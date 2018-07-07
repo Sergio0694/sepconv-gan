@@ -24,7 +24,7 @@ def load_files(source_paths):
                     source_files += [os.path.join(subdir, f)]
     return source_files
 
-def process_video_file(queue, cpu_id, output_path, seconds, splits, min_duration, resolution, encoding):
+def process_video_file(queue, cpu_id, output_path, seconds, splits, min_duration, resolution, encoding, timeout):
     '''Processes a video file in the background.'''
 
     # output folder for the current process
@@ -48,15 +48,18 @@ def process_video_file(queue, cpu_id, output_path, seconds, splits, min_duration
 
         # extract frames evenly from the specified number of video sections
         step = duration // (splits + 1)
+        success = True
         for chunk in range(splits):
             if not extract_frames(
                 video_path, target_path, None if resolution is None else (resolution, -1),
                 step * (chunk + 1) - (seconds // 2), # offset to before the current chunk
                 seconds,
-                'v{}-s{}_'.format(i, chunk), encoding):
+                'v{}-s{}_'.format(i, chunk), encoding, timeout):
                 INFO('{} FAIL at {}'.format(video_path, chunk))
+                success = False
                 break
-        INFO('{} OK [_{}]'.format(video_path, cpu_id))
+        if success:
+            INFO('{} OK [_{}]'.format(video_path, cpu_id))
 
 def preprocess_frames(frames_folder, extension, min_variance, min_diff_threshold, max_diff_threshold, max_length):
 
@@ -105,7 +108,7 @@ def preprocess_frames(frames_folder, extension, min_variance, min_diff_threshold
                 for s, frame in enumerate(splits[split_key]):
                     os.rename(os.path.join(frames_folder, frame), os.path.join(root_dir, '{}-b{}_{}{}'.format(key, b, s, extension)))
 
-def build_dataset(source_paths, output_path, seconds, splits, resolution, extension, min_variance, min_diff_threshold, max_diff_threshold, max_length):
+def build_dataset(source_paths, output_path, seconds, splits, resolution, extension, min_variance, min_diff_threshold, max_diff_threshold, max_length, timeout):
     '''Builds a dataset in the target directory by reading all the existing movie
     files from the source directory and converting them to the specified resolution.
     
@@ -119,6 +122,7 @@ def build_dataset(source_paths, output_path, seconds, splits, resolution, extens
     min_diff_threshold(int) -- the minimum difference between consecutive video frames
     max_diff_threshold(int) -- the maximum difference between consecutive video frames
     max_length(int) -- the maximum length of a series of consecutive frames
+    timeout(int) -- timeout for the frames extraction operation
     '''
 
     assert seconds >= 1                             # what's the point otherwise?
@@ -134,7 +138,7 @@ def build_dataset(source_paths, output_path, seconds, splits, resolution, extens
     # setup the workers
     queue = Queue()
     processes = [
-        Process(target=process_video_file, args=[queue, cpu_id, output_path, seconds, splits, min_duration, resolution, extension])
+        Process(target=process_video_file, args=[queue, cpu_id, output_path, seconds, splits, min_duration, resolution, extension, timeout])
         for cpu_id in range(cpu_count())
     ]
     for process in processes:

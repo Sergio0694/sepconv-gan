@@ -21,6 +21,7 @@ def setup():
     parser.add_argument('--min-diff-threshold', default=IMAGE_DIFF_MIN_THRESHOLD, help='The minimum difference between consecutive video frames')
     parser.add_argument('--max-diff-threshold', default=IMAGE_DIFF_MAX_THRESHOLD, help='The maximum difference between consecutive video frames')
     parser.add_argument('--max-subsequence-length', default=MAX_SUBSEQUENCE_LENGTH, help='The maximum length of a series of consecutive frames.')
+    parser.add_argument('-timeout', default=10, help='Optional timeout for the frames extraction operation')
     parser.add_argument('-output', help='The output path for the created dataset', required=True)
     args = vars(parser.parse_args())
 
@@ -45,6 +46,7 @@ def setup():
     ensure_valid_int('min_diff_threshold', lambda x: x >= 0, 'The minimum difference threshold must be a positive number')
     ensure_valid_int('max_diff_threshold', lambda x: x >= args['min_diff_threshold'] + 100, 'The maximum difference threshold must be greater than the minimum threshold')
     ensure_valid_int('max_subsequence_length', lambda x: x >= 3, 'The maximum subsequence must be at least as wide as an input window (3)')
+    ensure_valid_int('timeout', lambda x: x >= 1, 'The timeout must be at least equal to 1.')
     if not os.path.isdir(args['output']):
         raise ValueError('The output folder does not exist')
 
@@ -60,7 +62,7 @@ def setup():
     build_dataset(
         args['source'], args['output'],
         args['split_duration'], args['splits'], args['resolution'], args['frame_quality'],
-        args['min_variance'], args['min_diff_threshold'], args['max_diff_threshold'], args['max_subsequence_length'])
+        args['min_variance'], args['min_diff_threshold'], args['max_diff_threshold'], args['max_subsequence_length'], args['timeout'])
 
 if __name__ == '__main__':
     setup()

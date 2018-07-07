@@ -2,7 +2,7 @@ import os
 from pathlib import Path
 from subprocess import call, Popen, PIPE, STDOUT, TimeoutExpired
 
-def extract_frames(video_path, output_folder, scale=None, start=0, duration=60, suffix='', extension='.jpg', timeout=10):
+def extract_frames(video_path, output_folder, scale=None, start=0, duration=60, suffix='', extension='.jpg', timeout=None):
     '''Exports a series of frames from the input video to the specified folder.
 
     video_path(str) -- the path to the input video
@@ -12,6 +12,7 @@ def extract_frames(video_path, output_folder, scale=None, start=0, duration=60, 
     duration(int) -- the number of seconds to export
     suffix(str) -- an identifier for the exported frames
     extension(str) -- the preferred image extension for the exported frames (jpg|png|bmp)
+    timeout(int) -- optional timeout for the operation
     '''
     
     assert video_path is not None and output_folder is not None
@@ -21,6 +22,7 @@ def extract_frames(video_path, output_folder, scale=None, start=0, duration=60, 
     assert scale is None or \
             (len(scale) == 2 and (scale[0] >= 240 or scale[0] == -1) \
             and (scale[1] >= 240 or scale[1] == -1) and not (scale[0] == -1 and scale[1] == -1))
+    assert timeout is None or timeout >= 1
 
     Path(output_folder).mkdir(exist_ok=True)
     args = (

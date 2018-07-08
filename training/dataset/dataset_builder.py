@@ -168,7 +168,7 @@ def process_batch(
 def build_dataset(
     source_paths, output_path, seconds, splits, resolution, extension, 
     min_variance, min_diff_threshold, max_diff_threshold, max_length, color,
-    timeout):
+    timeout, batch_size):
     '''Builds a dataset in the target directory by reading all the existing movie
     files from the source directory and converting them to the specified resolution.
     
@@ -184,6 +184,7 @@ def build_dataset(
     max_length(int) -- the maximum length of a series of consecutive frames
     color(bool) -- indicates whether or not to filter out grayscale images
     timeout(int) -- timeout for the frames extraction operation
+    batch_size(int) -- the size of each processing batch
     '''
 
     assert seconds >= 1                             # what's the point otherwise?
@@ -209,10 +210,9 @@ def build_dataset(
             i += n
 
     # process the source videos
-    BATCH_SIZE = 500 # 100% arbitrary
-    for i, chunk in enumerate(batch(video_files, BATCH_SIZE)):
+    for i, chunk in enumerate(batch(video_files, batch_size)):
         process_batch(
-            BATCH_SIZE * i, chunk,
+            batch_size * i, chunk,
             output_path, seconds, splits, resolution, min_duration, extension,
             min_variance, min_diff_threshold, max_diff_threshold, max_length, color,
             timeout)

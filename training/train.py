@@ -73,7 +73,7 @@ def run():
 
             with tf.variable_scope('generator_opt', None, [yHat, y, disc_false, eta]):
                 with tf.variable_scope('generator_loss', None, [yHat, y, disc_false]):
-                    gen_own_loss = tf.reduce_mean((yHat * 255.0 - y) ** 2)
+                    gen_own_loss = tf.reduce_mean((yHat * 255.0 - y) ** 2) if GENERATOR_QUADRATIC_LOSS else tf.reduce_mean(tf.abs(yHat * 255.0 - y))
                     gen_disc_loss = tf.contrib.gan.losses.wargs.modified_generator_loss(disc_false) # ignored if discriminator is disabled
                     gen_loss = gen_own_loss + gen_disc_loss
                     gen_loss_with_NaN_check = tf.verify_tensor_all_finite(gen_loss if DISCRIMINATOR_ACTIVATION_EPOCH is not None else gen_own_loss, 'NaN found in loss :(', 'NaN_check_output_loss')

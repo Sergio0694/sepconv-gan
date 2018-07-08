@@ -57,18 +57,17 @@ def process_video_file(queue, cpu_id, output_path, seconds, splits, min_duration
                 step * (chunk + 1) - (seconds // 2), # offset to before the current chunk
                 seconds,
                 'v{}-s{}_'.format(i, chunk), encoding, timeout):
-                INFO('{} FAIL at {}'.format(video_path, chunk))
                 if failed == chunk - 1:
                     aborted = True
                     break
                 failed = chunk
                 skipped += 1
         if failed is None:
-            INFO('{} OK [_{}]'.format(video_path, cpu_id))
+            INFO('{} OK [_{}][{}]'.format(video_path, cpu_id, i))
         elif aborted:
-            INFO('{} FAILED at {} [_{}]'.format(video_path, failed, cpu_id))
+            INFO('{} FAILED at {} [_{}][{}]'.format(video_path, failed, cpu_id, i))
         else:
-            INFO('{} OK with {} skipped [_{}]'.format(video_path, skipped, cpu_id))
+            INFO('{} OK with {} skipped [_{}][{}]'.format(video_path, skipped, cpu_id, i))
 
 def preprocess_frames(frames_folder, extension, min_variance, min_diff_threshold, max_diff_threshold, max_length, color):
 
@@ -210,7 +209,7 @@ def build_dataset(
             i += n
 
     # process the source videos
-    BATCH_SIZE = 20 # 100% arbitrary
+    BATCH_SIZE = 500 # 100% arbitrary
     for i, chunk in enumerate(batch(video_files, BATCH_SIZE)):
         process_batch(
             BATCH_SIZE * i, chunk,

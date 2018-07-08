@@ -48,7 +48,9 @@ def process_video_file(queue, cpu_id, output_path, seconds, splits, min_duration
 
         # extract frames evenly from the specified number of video sections
         step = duration // (splits + 1)
-        success = True
+        failed = None
+        aborted = False
+        skipped = 0
         for chunk in range(splits):
             if not extract_frames(
                 video_path, target_path, None if resolution is None else (resolution, -1),
@@ -56,10 +58,17 @@ def process_video_file(queue, cpu_id, output_path, seconds, splits, min_duration
                 seconds,
                 'v{}-s{}_'.format(i, chunk), encoding, timeout):
                 INFO('{} FAIL at {}'.format(video_path, chunk))
-                success = False
-                break
-        if success:
+                if failed == chunk - 1:
+                    aborted = True
+                    break
+                failed = chunk
+                skipped += 1
+        if failed is None:
             INFO('{} OK [_{}]'.format(video_path, cpu_id))
+        elif aborted:
+            INFO('{} FAILED at {} [_{}]'.format(video_path, failed, cpu_id))
+        else:
+            INFO('{} OK with {} skipped [_{}]'.format(video_path, skipped, cpu_id))
 
 def preprocess_frames(frames_folder, extension, min_variance, min_diff_threshold, max_diff_threshold, max_length, color):
 

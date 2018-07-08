@@ -8,7 +8,7 @@ from helpers.ffmpeg_helper import *
 from helpers.logger import LOG, INFO, BAR, RESET_LINE
 from __MACRO__ import *
 
-SUPPORTED_VIDEO_FORMATS = ('.mkv', '.avi', '.mp4')
+SUPPORTED_VIDEO_FORMATS = ('.mkv', '.avi', '.mp4', '.m2ts')
 
 def load_files(source_paths):
     '''Loads the list of all existing video files with the supported format from the input source directories.
@@ -168,7 +168,7 @@ def process_batch(
 def build_dataset(
     source_paths, output_path, seconds, splits, resolution, extension, 
     min_variance, min_diff_threshold, max_diff_threshold, max_length, color,
-    timeout, batch_size):
+    timeout, batch_size, index_offset):
     '''Builds a dataset in the target directory by reading all the existing movie
     files from the source directory and converting them to the specified resolution.
     
@@ -185,6 +185,7 @@ def build_dataset(
     color(bool) -- indicates whether or not to filter out grayscale images
     timeout(int) -- timeout for the frames extraction operation
     batch_size(int) -- the size of each processing batch
+    index_offset(int) -- the initial index offset for the video index
     '''
 
     assert seconds >= 1                             # what's the point otherwise?
@@ -212,7 +213,7 @@ def build_dataset(
     # process the source videos
     for i, chunk in enumerate(batch(video_files, batch_size)):
         process_batch(
-            batch_size * i, chunk,
+            index_offset + batch_size * i, chunk,
             output_path, seconds, splits, resolution, min_duration, extension,
             min_variance, min_diff_threshold, max_diff_threshold, max_length, color,
             timeout)

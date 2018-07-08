@@ -121,6 +121,51 @@ def preprocess_frames(frames_folder, extension, min_variance, min_diff_threshold
                 for s, frame in enumerate(splits[split_key]):
                     os.rename(os.path.join(frames_folder, frame), os.path.join(root_dir, '{}-b{}_{}{}'.format(key, b, s, extension)))
 
+def process_batch(
+    n, video_files, output_path, seconds, splits, resolution, min_duration, extension, 
+    min_variance, min_diff_threshold, max_diff_threshold, max_length, color,
+    timeout):
+
+    # setup the workers
+    queue = Queue()
+    processes = [
+        Process(target=process_video_file, args=[queue, cpu_id, output_path, seconds, splits, min_duration, resolution, extension, timeout])
+        for cpu_id in range(cpu_count())
+    ]
+    for process in processes:
+        process.start()
+    LOG('Workers started')
+
+    # process the source video files
+    for v, video_file in enumerate(video_files):
+        queue.put((n + v, video_file))
+    LOG('Queue ready')
+
+    # wait for completion
+    for _ in range(cpu_count()):
+        queue.put(None)
+    for process in processes:
+        process.join()
+    queue.close()
+    LOG('Frames extraction completed')
+
+    # preprocess the extracted frames
+    subdirs = ['_{}'.format(cpu_id) for cpu_id in range(cpu_count())]
+    processes = [
+        Process(target=preprocess_frames, args=[os.path.join(output_path, subdir), extension, min_variance, min_diff_threshold, max_diff_threshold, max_length, color])
+        for subdir in subdirs
+    ]
+    for process in processes:
+        process.start()
+    LOG('Preprocessing workers started')
+    for process in processes:
+        process.join()
+
+    # cleanup
+    LOG('Cleanup')
+    for subdir in subdirs:
+        rmtree(os.path.join(output_path, subdir))
+
 def build_dataset(
     source_paths, output_path, seconds, splits, resolution, extension, 
     min_variance, min_diff_threshold, max_diff_threshold, max_length, color,
@@ -153,42 +198,23 @@ def build_dataset(
     video_files = load_files(source_paths)
     LOG('{} video file(s) to process'.format(len(video_files)))
 
-    # setup the workers
-    queue = Queue()
-    processes = [
-        Process(target=process_video_file, args=[queue, cpu_id, output_path, seconds, splits, min_duration, resolution, extension, timeout])
-        for cpu_id in range(cpu_count())
-    ]
-    for process in processes:
-        process.start()
-    LOG('Workers started')
+    def batch(l, n):
+        '''A small function that batches the input list.'''
 
-    # process the source video files
-    for v, video_file in enumerate(video_files):
-        queue.put((v, video_file))
-    LOG('Queue ready')
+        i = 0
+        while True:
+            b = l[i:i + n]
+            if not b:
+                break
+            yield b
+            i += n
 
-    # wait for completion
-    for _ in range(cpu_count()):
-        queue.put(None)
-    for process in processes:
-        process.join()
-    queue.close()
-    LOG('Frames extraction completed')
-
-    # preprocess the extracted frames
-    subdirs = os.listdir(output_path)
-    processes = [
-        Process(target=preprocess_frames, args=[os.path.join(output_path, subdir), extension, min_variance, min_diff_threshold, max_diff_threshold, max_length, color])
-        for subdir in subdirs
-    ]
-    for process in processes:
-        process.start()
-    LOG('Preprocessing workers started')
-    for process in processes:
-        process.join()
-
-    # cleanup
-    LOG('Cleanup')
-    for subdir in subdirs:
-        rmtree(os.path.join(output_path, subdir))
+    # process the source videos
+    BATCH_SIZE = 20 # 100% arbitrary
+    for i, chunk in enumerate(batch(video_files, BATCH_SIZE)):
+        process_batch(
+            BATCH_SIZE * i, chunk,
+            output_path, seconds, splits, resolution, min_duration, extension,
+            min_variance, min_diff_threshold, max_diff_threshold, max_length, color,
+            timeout)
+    LOG('Dataset created successfully')

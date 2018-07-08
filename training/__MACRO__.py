@@ -4,15 +4,13 @@ import networks.generators.deep_motion_cnn as nn
 from helpers._cv2 import OpticalFlowEmbeddingType
 
 # paths
-TRAINING_DATASET_PATH = '/media/sergio/SSD/ML/th/datasets/480p'
+TRAINING_DATASET_PATH = '/media/sergio/SSD/ML/th/datasets/720p'
 TEST_DATASET_PATH = '/media/sergio/SSD/ML/th/datasets/test_1080'
 
 # preprocessing parameters
-TRAINING_IMAGES_SIZE = 240
-IMAGE_DIFF_MAX_THRESHOLD = 3000
-IMAGE_DIFF_MIN_THRESHOLD = 22
-IMAGE_MIN_VARIANCE_THRESHOLD = 8
-MAX_FLOW = 6
+TRAINING_IMAGES_SIZE = 160
+IMAGE_DIFF_MIN_THRESHOLD = 220
+MAX_FLOW = 12
 IMAGES_WINDOW_SIZE = 1
 FLOW_MODE = OpticalFlowEmbeddingType.NONE
 INPUT_CHANNELS = {

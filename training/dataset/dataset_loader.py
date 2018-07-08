@@ -25,7 +25,6 @@ def load_train(path, size, window):
     return pipeline \
         .shuffle(len(groups), reshuffle_each_iteration=True) \
         .map(lambda x, y: tf.py_func(tf_load_images, inp=[x, y, path], Tout=[tf.float32, tf.float32]), num_parallel_calls=cpu_count()) \
-        .filter(lambda x, y: tf.py_func(tf_ensure_difference_middle_threshold, inp=[x, y], Tout=[tf.bool])) \
         .map(lambda x, y: tf.py_func(tf_preprocess_train_images, inp=[x, y], Tout=[tf.float32, tf.float32]), num_parallel_calls=cpu_count()) \
         .filter(lambda x, y: tf.py_func(tf_ensure_difference_min_threshold, inp=[x, y], Tout=[tf.bool])) \
         .map(lambda x, y: tf.py_func(tf_final_input_transform, inp=[x, y], Tout=[tf.float32, tf.float32]), num_parallel_calls=cpu_count()) \
@@ -90,11 +89,14 @@ def load_core(path, window):
 
     # load the available frames, group by the requested window size
     files = os.listdir(path)
+    files.sort()
     groups, labels = [], []
     for i in range(len(files) - window * 2):
         candidates = files[i: i + window] + files[i + window + 1: i + 2 * window + 1]
-        info1, info2 = candidates[0].split('_'), candidates[-1].split('_')
-        if info1[0] == info2[0] and info1[1] == info2[1]:
+
+        # filename format: v0-s0-b1_0.jpg
+        info1, info2 = candidates[0].split('_')[0].split('-'), candidates[-1].split('_')[0].split('-')
+        if info1[0] == info2[0] and info1[1] == info2[1] and info1[2] == info2[2]:
             groups += [candidates]
             labels += [files[i + window]]
     if VERBOSE_MODE:
@@ -148,11 +150,10 @@ def tf_preprocess_train_images(samples, label):
     assert label.shape[0] >= TRAINING_IMAGES_SIZE and label.shape[1] >= TRAINING_IMAGES_SIZE
 
     # randomly resize the images to cover more view area with a single crop
-    if randint(0, 3) == 0:
-        y_t = randint(TRAINING_IMAGES_SIZE, label.shape[0] - 2 * MAX_FLOW) + 2 * MAX_FLOW
-        x_t = y_t * label.shape[1] // label.shape[0]
-        samples = np.array([cv2.resize(sample, (x_t, y_t)) for sample in samples], dtype=np.float32, copy=False)
-        label = cv2.resize(label, (x_t, y_t))
+    y_t = randint(TRAINING_IMAGES_SIZE, label.shape[0] - 2 * MAX_FLOW) + 2 * MAX_FLOW
+    x_t = y_t * label.shape[1] // label.shape[0]
+    samples = np.array([cv2.resize(sample, (x_t, y_t)) for sample in samples], dtype=np.float32, copy=False)
+    label = cv2.resize(label, (x_t, y_t))
 
     # setup
     max_flow_x = min(MAX_FLOW, label.shape[1] - TRAINING_IMAGES_SIZE)
@@ -227,19 +228,6 @@ def tf_calculate_batch_errors(samples, label):
         np.sum((pair[0] - pair[-1]) ** 2, dtype=np.float32) / size
         for pair in zip(images, images[1:])
     ]
-
-def tf_ensure_difference_middle_threshold(samples, label):
-    '''Computes the mean squared error between a series of images and returns whether
-    or not all the errors are in the expected interval.
-
-    images(np.array) -- the input images
-    threshold(int) -- the maximum squared difference between the first and last image
-    '''
-
-    return all([
-        IMAGE_DIFF_MIN_THRESHOLD < error < IMAGE_DIFF_MAX_THRESHOLD 
-        for error in tf_calculate_batch_errors(samples, label)
-    ])
 
 def tf_ensure_difference_min_threshold(samples, label):
     '''Computes the mean squared error between a series of images and returns whether

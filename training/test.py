@@ -19,8 +19,8 @@ def show_samples(size):
         results = []
         for pair in zip(samples, labels):
             results += [pair[0][:, :, :3]]
-            results += [pair[0][:, :, 3:]]
             results += [pair[1]]
+            results += [pair[0][:, :, 3:]]
         array = (np.array(results) * 255.0).astype(np.uint8)
         index, height, width, channels = array.shape
 

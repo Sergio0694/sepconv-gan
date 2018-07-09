@@ -29,7 +29,7 @@ def load_train(path, size, window):
         .filter(lambda x, y: tf.py_func(tf_ensure_difference_min_threshold, inp=[x, y], Tout=[tf.bool])) \
         .map(lambda x, y: tf.py_func(tf_final_input_transform, inp=[x, y], Tout=[tf.float32, tf.float32]), num_parallel_calls=cpu_count()) \
         .repeat() \
-        .batch(size) \
+        .apply(tf.contrib.data.batch_and_drop_remainder(size)) \
         .prefetch(1)
         
 def load_test(path, window):

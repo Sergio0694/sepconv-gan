@@ -2,6 +2,7 @@ from multiprocessing import Process, Queue
 import os
 from pathlib import Path
 from time import time
+from shutil import rmtree
 import cv2
 import tensorflow as tf
 import numpy as np
@@ -26,6 +27,9 @@ def run():
             current_path = os.path.join(TENSORBOARD_ROOT_DIR, name)
             if os.path.isfile(current_path):
                 os.rename(current_path, os.path.join(cleanup_path, name))
+    for subdir in (x for x in leftovers if os.path.isdir(x)):
+        if not '_1' in os.listdir(os.path.join(TENSORBOARD_ROOT_DIR, subdir)):
+            rmtree(subdir)
 
     # graph setup
     graph = tf.Graph()

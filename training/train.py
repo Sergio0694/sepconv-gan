@@ -27,9 +27,9 @@ def run():
             current_path = os.path.join(TENSORBOARD_ROOT_DIR, name)
             if os.path.isfile(current_path):
                 os.rename(current_path, os.path.join(cleanup_path, name))
-    for subdir in (x for x in leftovers if os.path.isdir(x)):
+    for subdir in (x for x in leftovers if os.path.isdir(os.path.join(TENSORBOARD_ROOT_DIR, x))):
         if not '_1' in os.listdir(os.path.join(TENSORBOARD_ROOT_DIR, subdir)):
-            rmtree(subdir)
+            rmtree(os.path.join(TENSORBOARD_ROOT_DIR, subdir))
 
     # graph setup
     graph = tf.Graph()

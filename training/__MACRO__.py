@@ -1,6 +1,7 @@
+from enum import Enum
 import os
 from datetime import datetime
-import networks.generators.deep_motion_sepconv as nn
+import networks.generators.deep_motion_unet as nn
 from helpers._cv2 import OpticalFlowEmbeddingType
 
 # paths
@@ -9,7 +10,7 @@ TEST_DATASET_PATH = '/media/sergio/SSD/ML/th/datasets/test_1080'
 
 # preprocessing parameters
 TRAINING_IMAGES_SIZE = 160
-IMAGE_DIFF_MIN_THRESHOLD = 220
+IMAGE_DIFF_MIN_THRESHOLD = 320
 MAX_FLOW = 12
 IMAGES_WINDOW_SIZE = 1
 FLOW_MODE = OpticalFlowEmbeddingType.NONE
@@ -20,19 +21,30 @@ INPUT_CHANNELS = {
     OpticalFlowEmbeddingType.BIDIRECTIONAL_PREWARPED: 12
 }.get(FLOW_MODE)
 
-# training parameters
-GENERATOR_QUADRATIC_LOSS = False
-INITIAL_GENERATOR_LR = 0.0005
-GENERATOR_LR_DECAY_RATE = 0.96
+# generator loss
+class LossType(Enum):
+    L1 = 0
+    L2 = 1
+    PERCEPTUAL = 2
+GENERATOR_LOSS_TYPE = LossType.PERCEPTUAL
+
+# generator parameters
+INITIAL_GENERATOR_LR = 0.001
+GENERATOR_LR_DECAY_RATE = 0.94
 GENERATOR_ADAM_OPTIMIZER = True
+GENERATOR_GRADIENT_CLIP = 5.0
+NETWORK_BUILDER = nn.get_network_v1
+
+# discriminator
+DISCRIMINATOR_ACTIVATION_EPOCH = None
+DISCRIMINATOR_ENABLED = DISCRIMINATOR_ACTIVATION_EPOCH is not None
 DISCRIMINATOR_LR = 0.00001
+DISCRIMINATOR_GRADIENT_CLIP = 5.0
+
+# training parameters
 TRAINING_TOTAL_SAMPLES = 10000000
 TENSORBOARD_LOG_INTERVAL = 10000
-BATCH_SIZE = 12
-DISCRIMINATOR_ACTIVATION_EPOCH = None
-GENERATOR_GRADIENT_CLIP = 5.0
-DISCRIMINATOR_GRADIENT_CLIP = 5.0
-NETWORK_BUILDER = nn.get_network_v1
+BATCH_SIZE = 10
 
 # debug
 VERBOSE_MODE = True

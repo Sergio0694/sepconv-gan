@@ -32,8 +32,7 @@ def run():
             rmtree(os.path.join(TENSORBOARD_ROOT_DIR, subdir))
 
     # graph setup
-    graph = tf.Graph()
-    with graph.as_default():
+    with tf.Session() as session:
 
         # initialize the dataset
         LOG('Creating datasets')
@@ -107,7 +106,7 @@ def run():
         gen_loss_summary = tf.summary.scalar('TRAIN_full_loss', gen_loss)
         disc_loss_summary = tf.summary.scalar('TRAIN_disc_loss', disc_loss)
         test_loss = tf.placeholder(tf.float32, name='test_loss')
-        tf.summary.scalar('TEST_loss', test_loss, ['_'])
+        test_loss_summary = tf.summary.scalar('TEST_loss', test_loss, ['_'])
         merged_summary_all = tf.summary.merge([gen_own_loss_summary, gen_loss_summary, disc_loss_summary])
         merged_summary_gen = tf.summary.merge([gen_own_loss_summary])
 
@@ -121,19 +120,18 @@ def run():
             for v in tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='discriminator')
         ])))
 
-    LOG('Background queue setup')
-    frames_queue = Queue()
-    worker = Process(target=save_frame, args=[frames_queue])
-    worker.start()
+        LOG('Background queue setup')
+        frames_queue = Queue()
+        worker = Process(target=save_frame, args=[frames_queue])
+        worker.start()
 
-    # train the model
-    LOG('Training starting...')
-    with tf.Session(graph=graph) as session:
+        # train the model
+        LOG('Training initialization')
         with tf.summary.FileWriter(TENSORBOARD_RUN_DIR, session.graph) as writer:
 
             # initialization
             session.run(train_init_op)
-            session.run(tf.global_variables_initializer())
+            _tf.initialize_variables(session)
             tf.train.Saver().save(session, TENSORBOARD_RUN_DIR) # store the .meta file once
             saver = tf.train.Saver(max_to_keep=MAX_MODELS_TO_KEEP)
             rates = _tf.DecayingRate(INITIAL_GENERATOR_LR, GENERATOR_LR_DECAY_RATE)
@@ -142,6 +140,7 @@ def run():
             lr = rates.get()
             fetches = [gen_optimizer, disc_optimizer] if DISCRIMINATOR_ACTIVATION_EPOCH == 0 else [gen_optimizer]
 
+            LOG('Training started...') 
             while samples < TRAINING_TOTAL_SAMPLES:
                 if samples // TENSORBOARD_LOG_INTERVAL > step:
                     step = samples // TENSORBOARD_LOG_INTERVAL
@@ -181,8 +180,7 @@ def run():
                             break
                     
                     # log the test loss and restore the pipeline
-                    test_summary_tensor = graph.get_tensor_by_name('TEST_loss:0')
-                    test_summary = session.run(test_summary_tensor, feed_dict={test_loss: test_score})
+                    test_summary = session.run(test_loss_summary, feed_dict={test_loss: test_score})
                     writer.add_summary(test_summary, samples)
                     session.run(train_init_op)
 

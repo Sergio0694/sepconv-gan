@@ -30,7 +30,7 @@ def load_train(path, size, window):
         .map(lambda x, y: tf.py_func(tf_final_input_transform, inp=[x, y], Tout=[tf.float32, tf.float32]), num_parallel_calls=cpu_count()) \
         .repeat() \
         .apply(tf.contrib.data.batch_and_drop_remainder(size)) \
-        .prefetch(1)
+        .prefetch(2)
         
 def load_test(path, window):
     '''Prepares the input pipeline to test the model. Each sample is made up of 

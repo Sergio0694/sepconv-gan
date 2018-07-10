@@ -17,6 +17,19 @@ def minimize_with_clipping(optimizer, loss, clip=5.0, scope=None):
     ]
     return optimizer.apply_gradients(zip(gradients, variables))
 
+def initialize_variables(session):
+    '''Initializes all uninitialized variables in the current session.
+
+    session(tf.Session) -- the current executing session
+    '''
+
+    global_vars = tf.global_variables()
+    is_not_initialized = session.run([tf.is_variable_initialized(var) for var in global_vars])
+    not_initialized_vars = [v for (v, f) in zip(global_vars, is_not_initialized) if not f]
+    
+    if len(not_initialized_vars):
+        session.run(tf.variables_initializer(not_initialized_vars))
+
 class DynamicRate(object):
     '''A class that produces learning rates as specified from the 
     initial mapping of custom rates to training epochs.

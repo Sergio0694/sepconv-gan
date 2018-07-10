@@ -1,7 +1,7 @@
 import tensorflow as tf
 import networks._tf as _tf
 
-def get_network_v1(x):
+def get_network_v1(x, training):
     '''Generates a simple CNN to perform image interpolation, based on the FI_CNN_model
     network defined here: https://github.com/neil454/deep-motion/blob/master/src/FI_CNN.py#L6.
 
@@ -29,7 +29,7 @@ def get_network_v1(x):
             up2 = tf.image.resize_nearest_neighbor(conv4, [up2_s[1], up2_s[2]])
             return tf.layers.conv2d(up2, 3, 3, activation=tf.nn.sigmoid, padding='same')
 
-def get_network_v2(x):
+def get_network_v2(x, training):
     '''Generates a variant of the simple CNN to perform image interpolation.
 
     This network takes a [batch, 2, h, w, 3] input tensor, where each input sample is
@@ -65,7 +65,7 @@ def get_network_v2(x):
 
             return tf.layers.conv2d(conv5_b, 3, 5, activation=tf.nn.sigmoid, padding='same')
 
-def get_network_v3(x):
+def get_network_v3(x, training):
     '''Generates a deeper variant of the simple CNN to perform image interpolation.
 
     This network takes a [batch, 2, h, w, 3] input tensor, where each input sample is

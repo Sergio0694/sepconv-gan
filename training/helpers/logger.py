@@ -1,7 +1,7 @@
 from colorama import init, Fore
 
 # initializes colorama
-init(autoreset=True, convert=True)
+init(autoreset=True)
 
 def LOG(text):
     '''Displays a debug message to the screen, with the [DEBUG] prefix

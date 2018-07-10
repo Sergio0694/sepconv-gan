@@ -91,9 +91,9 @@ def run():
                     elif GENERATOR_LOSS_TYPE == LossType.PERCEPTUAL:
                         gen_loss = vgg19.get_loss(yHat * 255.0, y)
                     elif GENERATOR_LOSS_TYPE == LossType.L1_PERCEPTUAL:
-                        gen_loss = tf.reduce_mean(tf.abs(yHat * 255.0 - y)) + 0.8 * vgg19.get_loss(yHat * 255.0, y)
+                        gen_loss = L_LOSS_FACTOR * tf.reduce_mean(tf.abs(yHat * 255.0 - y)) + PERCEPTUAL_LOSS_FACTOR * vgg19.get_loss(yHat * 255.0, y)
                     elif GENERATOR_LOSS_TYPE == LossType.L2_PERCEPTUAL:
-                        gen_loss = tf.reduce_mean((yHat * 255.0 - y) ** 2) + 0.8 * vgg19.get_loss(yHat * 255.0, y)
+                        gen_loss = L_LOSS_FACTOR * tf.reduce_mean((yHat * 255.0 - y) ** 2) + PERCEPTUAL_LOSS_FACTOR * vgg19.get_loss(yHat * 255.0, y)
                     else:
                         raise ValueError('Invalid loss type')
                     if DISCRIMINATOR_ENABLED:

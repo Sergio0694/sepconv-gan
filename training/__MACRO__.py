@@ -1,7 +1,7 @@
 from enum import Enum
 import os
 from datetime import datetime
-import networks.generators.deep_motion_unet as nn
+import networks.generators.deep_motion_sepconv as nn
 from helpers._cv2 import OpticalFlowEmbeddingType
 
 # paths
@@ -10,7 +10,7 @@ TEST_DATASET_PATH = '/media/sergio/SSD/ML/th/datasets/test_1080'
 
 # preprocessing parameters
 TRAINING_IMAGES_SIZE = 160
-IMAGE_DIFF_MIN_THRESHOLD = 320
+IMAGE_DIFF_MIN_THRESHOLD = 220
 MAX_FLOW = 12
 IMAGES_WINDOW_SIZE = 1
 FLOW_MODE = OpticalFlowEmbeddingType.NONE
@@ -30,10 +30,12 @@ class LossType(Enum):
     L2_PERCEPTUAL = 4
 GENERATOR_LOSS_TYPE = LossType.L1_PERCEPTUAL
 PERCEPTUAL_LOSS_ENABLED = GENERATOR_LOSS_TYPE.value > 1
+L_LOSS_FACTOR = 0.2
+PERCEPTUAL_LOSS_FACTOR = 1.0
 
 # generator parameters
-INITIAL_GENERATOR_LR = 0.001
-GENERATOR_LR_DECAY_RATE = 0.94
+INITIAL_GENERATOR_LR = 0.0005
+GENERATOR_LR_DECAY_RATE = 0.99
 GENERATOR_ADAM_OPTIMIZER = True
 GENERATOR_GRADIENT_CLIP = 5.0
 NETWORK_BUILDER = nn.get_network_v1

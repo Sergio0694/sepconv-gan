@@ -229,6 +229,10 @@ def tf_calculate_batch_errors(samples, label):
         for pair in zip(images, images[1:])
     ]
 
+def tf_validate_variance(image):
+    mean, var = cv2.meanStdDev(image)
+    return np.sum(var) / 3 > IMAGE_MEAN_VARIANCE
+
 def tf_ensure_difference_min_threshold(samples, label):
     '''Computes the mean squared error between a series of images and returns whether
     or not all the errors respect just the minimum difference constraint.
@@ -237,7 +241,10 @@ def tf_ensure_difference_min_threshold(samples, label):
     threshold(int) -- the maximum squared difference between the first and last image
     '''
 
+    # check mean and variance
+    
+
     return all([
         IMAGE_DIFF_MIN_THRESHOLD < error
         for error in tf_calculate_batch_errors(samples, label)
-    ])
+    ]) and tf_validate_variance(label)

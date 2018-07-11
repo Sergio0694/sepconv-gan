@@ -11,6 +11,7 @@ TEST_DATASET_PATH = '/media/sergio/SSD/ML/th/datasets/test_1080'
 # preprocessing parameters
 TRAINING_IMAGES_SIZE = 160
 IMAGE_DIFF_MIN_THRESHOLD = 220
+IMAGE_MEAN_VARIANCE = 16
 MAX_FLOW = 12
 IMAGES_WINDOW_SIZE = 1
 FLOW_MODE = OpticalFlowEmbeddingType.NONE
@@ -55,7 +56,7 @@ BATCH_SIZE = 10
 VERBOSE_MODE = True
 TRAINING_PROGRESS_BAR_LENGTH = 10
 SHOW_TEST_SAMPLES_INFO_ON_LOAD = False
-TENSORBOARD_ROOT_DIR = '/home/sergio/Documents/tensorboard'
+TENSORBOARD_ROOT_DIR = '/media/sergio/Misc/tensorboard'
 MODEL_ID = '{}.{}_({})'.format(nn.__name__.split('.')[-1], NETWORK_BUILDER.__name__, datetime.now().strftime('%d-%m-%Y_%H-%M'))
 TENSORBOARD_RUN_DIR = os.path.join(TENSORBOARD_ROOT_DIR, MODEL_ID)
 MAX_MODELS_TO_KEEP = 1

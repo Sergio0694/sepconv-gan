@@ -55,7 +55,7 @@ def run():
         training = tf.placeholder(tf.bool, name='training_mode')
         with tf.variable_scope('generator', None, [x]):
             yHat = NETWORK_BUILDER(x / 255.0, training)
-            clipped_yHat = tf.clip_by_value(yHat, 0.0, 1.0)
+            yHat_255 = yHat * 255.0
 
         # optional discriminator
         if DISCRIMINATOR_ENABLED:
@@ -68,12 +68,13 @@ def run():
                 x_true = tf.placeholder_with_default(disc_x_next, [None, TRAINING_IMAGES_SIZE, TRAINING_IMAGES_SIZE, 3], name='x_true')
 
             # discriminator model
-            with tf.variable_scope('discriminator', None, [clipped_yHat, x_true], reuse=tf.AUTO_REUSE):
+            with tf.variable_scope('discriminator', None, [yHat, x_true], reuse=tf.AUTO_REUSE):
                 with tf.name_scope('true', [x_true]):
                     disc_true = inception_mini.get_network(x_true / 255.0)
-                with tf.name_scope('false', [clipped_yHat]):
-                    clipped_yHat.set_shape([None, TRAINING_IMAGES_SIZE, TRAINING_IMAGES_SIZE, 3])
-                    disc_false = inception_mini.get_network(clipped_yHat)
+                with tf.name_scope('false', [yHat]):
+                    disc_clipped_yHat = tf.clip_by_value(yHat, 0.0, 1.0)
+                    disc_clipped_yHat.set_shape([BATCH_SIZE, TRAINING_IMAGES_SIZE, TRAINING_IMAGES_SIZE, 3])
+                    disc_false = inception_mini.get_network(disc_clipped_yHat)
 
         # setup the loss function
         generator_loss_inputs = [yHat, y, disc_false] if DISCRIMINATOR_ENABLED else [yHat, y]
@@ -85,15 +86,15 @@ def run():
                 with tf.variable_scope('generator_loss', None, generator_loss_inputs):
 
                     if GENERATOR_LOSS_TYPE == LossType.L1:
-                        gen_loss = tf.reduce_mean(tf.abs(yHat * 255.0 - y))
+                        gen_loss = tf.reduce_mean(tf.abs(yHat_255 - y))
                     elif GENERATOR_LOSS_TYPE == LossType.L2:
-                        gen_loss = tf.reduce_mean((yHat * 255.0 - y) ** 2)
+                        gen_loss = tf.reduce_mean((yHat_255 - y) ** 2)
                     elif GENERATOR_LOSS_TYPE == LossType.PERCEPTUAL:
-                        gen_loss = vgg19.get_loss(yHat * 255.0, y)
+                        gen_loss = vgg19.get_loss(yHat_255, y)
                     elif GENERATOR_LOSS_TYPE == LossType.L1_PERCEPTUAL:
-                        gen_loss = L_LOSS_FACTOR * tf.reduce_mean(tf.abs(yHat * 255.0 - y)) + PERCEPTUAL_LOSS_FACTOR * vgg19.get_loss(yHat * 255.0, y)
+                        gen_loss = L_LOSS_FACTOR * tf.reduce_mean(tf.abs(yHat_255 - y)) + PERCEPTUAL_LOSS_FACTOR * vgg19.get_loss(yHat_255, y)
                     elif GENERATOR_LOSS_TYPE == LossType.L2_PERCEPTUAL:
-                        gen_loss = L_LOSS_FACTOR * tf.reduce_mean((yHat * 255.0 - y) ** 2) + PERCEPTUAL_LOSS_FACTOR * vgg19.get_loss(yHat * 255.0, y)
+                        gen_loss = L_LOSS_FACTOR * tf.reduce_mean((yHat_255 - y) ** 2) + PERCEPTUAL_LOSS_FACTOR * vgg19.get_loss(yHat_255, y)
                     else:
                         raise ValueError('Invalid loss type')
                     if DISCRIMINATOR_ENABLED:
@@ -117,7 +118,8 @@ def run():
                                         else _tf.minimize_with_clipping(disc_adam, disc_loss, DISCRIMINATOR_GRADIENT_CLIP, scope='discriminator')
 
         # output image
-        with tf.variable_scope('inference', None, [clipped_yHat]):
+        with tf.variable_scope('inference', None, [yHat]):
+            clipped_yHat = tf.clip_by_value(yHat, 0.0, 1.0)
             yHat_proof = tf.verify_tensor_all_finite(clipped_yHat, 'NaN found in output image :(', 'NaN_check_output') * 255.0
             test_clipped_loss = tf.reduce_mean((yHat_proof - y) ** 2)
             uint8_img = tf.cast(yHat_proof, tf.uint8, name='uint8_img')

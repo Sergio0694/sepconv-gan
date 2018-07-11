@@ -13,7 +13,6 @@ def get_base(x):
     x(tf.Tensor) -- the input tensor
     '''
 
-    x.set_shape([BATCH_SIZE, TRAINING_IMAGES_SIZE, TRAINING_IMAGES_SIZE, 3])
     with tf.variable_scope(ROOT_SCOPE, None, [x]):
         with tf.variable_scope('VGG19', None, [x], reuse=tf.AUTO_REUSE):
             processed_x = x - BGR_MEAN_PIXELS

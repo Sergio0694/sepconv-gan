@@ -134,12 +134,14 @@ def run():
         
         # summaries
         with tf.name_scope('summaries'):
-            gen_loss_summary = tf.summary.scalar('TRAIN_gen_loss', gen_loss)
             if DISCRIMINATOR_ENABLED:
-                disc_loss_summary = tf.summary.scalar('TRAIN_disc_loss', disc_loss)
-                merged_summary_train = tf.summary.merge([gen_loss_summary, disc_loss_summary])
+                merged_summary_train = tf.summary.merge([
+                    tf.summary.scalar('TRAIN_gen_own_loss', gen_own_loss),
+                    tf.summary.scalar('TRAIN_gen_loss', gen_loss),
+                    tf.summary.scalar('TRAIN_disc_loss', disc_loss)
+                ])
             else:
-                merged_summary_train = tf.summary.merge([gen_loss_summary])
+                merged_summary_train = tf.summary.merge([tf.summary.scalar('TRAIN_gen_own_loss', gen_own_loss)])
             test_loss = tf.placeholder(tf.float32, name='test_loss')
             test_clipped_loss_summary = tf.summary.scalar('TEST_clipped_loss', test_loss)  
             test_loss_summary = tf.summary.scalar('TEST_loss', test_loss)           

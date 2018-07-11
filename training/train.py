@@ -9,7 +9,7 @@ import numpy as np
 from __MACRO__ import *
 import dataset.dataset_loader as data_loader
 from helpers.logger import LOG, INFO, BAR, RESET_LINE
-import networks.discriminators.inception_resnet_mini as inception_mini
+import networks.discriminators.vgg19 as vgg19_discriminator
 import networks.pretrained.vgg19 as vgg19
 import networks._tf as _tf
 
@@ -37,13 +37,20 @@ def run():
 
         # initialize the dataset
         LOG('Creating datasets')
-        with tf.variable_scope('generator_data'):
+        with tf.name_scope('generator_data'):
             train_dataset = data_loader.load_train(TRAINING_DATASET_PATH, BATCH_SIZE, IMAGES_WINDOW_SIZE)
             test_dataset = data_loader.load_test(TEST_DATASET_PATH, IMAGES_WINDOW_SIZE)
             gen_iterator = tf.data.Iterator.from_structure(train_dataset.output_types, train_dataset.output_shapes)
             x_train, y = gen_iterator.get_next()
             train_init_op = gen_iterator.make_initializer(train_dataset)
             test_init_op = gen_iterator.make_initializer(test_dataset)
+
+        # true samples for the discriminator
+        if DISCRIMINATOR_ENABLED:
+            with tf.name_scope('discriminator_data'):
+                disc_dataset = data_loader.load_discriminator_samples(TRAINING_DATASET_PATH, BATCH_SIZE)
+                disc_iterator = disc_dataset.make_one_shot_iterator()
+                x_true = disc_iterator.get_next()[0]
 
         # generator model
         LOG('Creating model')
@@ -56,25 +63,25 @@ def run():
         with tf.variable_scope('generator', None, [x]):
             yHat = NETWORK_BUILDER(x / 255.0, training)
             yHat_255 = yHat * 255.0
+        
+        # VGG19 setup
+        vgg19_args = dict()
+        if PERCEPTUAL_LOSS_ENABLED:
+            vgg19_args['yHat'] = yHat_255
+            vgg19_args['y'] = y
+        if DISCRIMINATOR_ENABLED:
+            vgg19_args['discriminator_true'] = x_true
+        vgg19_instances = vgg19.get_networks(vgg19_args)
 
         # optional discriminator
         if DISCRIMINATOR_ENABLED:
-
-            # true samples
-            with tf.variable_scope('discriminator_data'):
-                disc_dataset = data_loader.load_discriminator_samples(TRAINING_DATASET_PATH, BATCH_SIZE)
-                disc_iterator = disc_dataset.make_one_shot_iterator()
-                disc_x_next = disc_iterator.get_next()[0]
-                x_true = tf.placeholder_with_default(disc_x_next, [None, TRAINING_IMAGES_SIZE, TRAINING_IMAGES_SIZE, 3], name='x_true')
-
-            # discriminator model
-            with tf.variable_scope('discriminator', None, [yHat, x_true], reuse=tf.AUTO_REUSE):
-                with tf.name_scope('true', [x_true]):
-                    disc_true = inception_mini.get_network(x_true / 255.0)
-                with tf.name_scope('false', [yHat]):
-                    disc_clipped_yHat = tf.clip_by_value(yHat, 0.0, 1.0)
-                    disc_clipped_yHat.set_shape([BATCH_SIZE, TRAINING_IMAGES_SIZE, TRAINING_IMAGES_SIZE, 3])
-                    disc_false = inception_mini.get_network(disc_clipped_yHat)
+            _, true_base = vgg19_instances['discriminator_true']
+            _, false_base = vgg19_instances['yHat']
+            with tf.variable_scope('discriminator', None, [true_base, false_base], reuse=tf.AUTO_REUSE):
+                with tf.name_scope('true', [true_base]):
+                    disc_true = vgg19_discriminator.get_network(true_base)
+                with tf.name_scope('false', [false_base]):
+                    disc_false = vgg19_discriminator.get_network(false_base)
 
         # setup the loss function
         generator_loss_inputs = [yHat, y, disc_false] if DISCRIMINATOR_ENABLED else [yHat, y]
@@ -82,19 +89,19 @@ def run():
         with tf.variable_scope('optimization', None, generator_loss_inputs + discriminator_loss_inputs):
 
             # generator
-            with tf.variable_scope('generator_opt', None, generator_loss_inputs):
-                with tf.variable_scope('generator_loss', None, generator_loss_inputs):
+            with tf.variable_scope('gen_optimizer', None, generator_loss_inputs):
+                with tf.variable_scope('gen_loss', None, generator_loss_inputs):
 
                     if GENERATOR_LOSS_TYPE == LossType.L1:
                         gen_loss = tf.reduce_mean(tf.abs(yHat_255 - y))
                     elif GENERATOR_LOSS_TYPE == LossType.L2:
                         gen_loss = tf.reduce_mean((yHat_255 - y) ** 2)
                     elif GENERATOR_LOSS_TYPE == LossType.PERCEPTUAL:
-                        gen_loss = vgg19.get_loss(yHat_255, y)
+                        gen_loss = vgg19.get_loss(vgg19_instances['yHat'], vgg19_instances['y'])
                     elif GENERATOR_LOSS_TYPE == LossType.L1_PERCEPTUAL:
-                        gen_loss = L_LOSS_FACTOR * tf.reduce_mean(tf.abs(yHat_255 - y)) + PERCEPTUAL_LOSS_FACTOR * vgg19.get_loss(yHat_255, y)
+                        gen_loss = L_LOSS_FACTOR * tf.reduce_mean(tf.abs(yHat_255 - y)) + PERCEPTUAL_LOSS_FACTOR * vgg19.get_loss(vgg19_instances['yHat'], vgg19_instances['y'])
                     elif GENERATOR_LOSS_TYPE == LossType.L2_PERCEPTUAL:
-                        gen_loss = L_LOSS_FACTOR * tf.reduce_mean((yHat_255 - y) ** 2) + PERCEPTUAL_LOSS_FACTOR * vgg19.get_loss(yHat_255, y)
+                        gen_loss = L_LOSS_FACTOR * tf.reduce_mean((yHat_255 - y) ** 2) + PERCEPTUAL_LOSS_FACTOR * vgg19.get_loss(vgg19_instances['yHat'], vgg19_instances['y'])
                     else:
                         raise ValueError('Invalid loss type')
                     if DISCRIMINATOR_ENABLED:
@@ -110,7 +117,7 @@ def run():
 
             # discriminator, if needed
             if DISCRIMINATOR_ENABLED:
-                with tf.variable_scope('discriminator_opt', None, [disc_true, disc_false]):
+                with tf.variable_scope('disc_optimizer', None, [disc_true, disc_false]):
                     disc_loss = tf.contrib.gan.losses.wargs.modified_discriminator_loss(disc_true, disc_false)
                     with tf.control_dependencies(tf.get_collection(tf.GraphKeys.UPDATE_OPS, scope='discriminator')):
                         disc_adam = tf.train.AdamOptimizer(DISCRIMINATOR_LR)
@@ -118,7 +125,7 @@ def run():
                                         else _tf.minimize_with_clipping(disc_adam, disc_loss, DISCRIMINATOR_GRADIENT_CLIP, scope='discriminator')
 
         # output image
-        with tf.variable_scope('inference', None, [yHat]):
+        with tf.name_scope('inference', None, [yHat]):
             clipped_yHat = tf.clip_by_value(yHat, 0.0, 1.0)
             yHat_proof = tf.verify_tensor_all_finite(clipped_yHat, 'NaN found in output image :(', 'NaN_check_output') * 255.0
             test_clipped_loss = tf.reduce_mean((yHat_proof - y) ** 2)
@@ -145,11 +152,15 @@ def run():
                 np.prod(v.get_shape().as_list()) 
                 for v in tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='discriminator')
             ])))
+        INFO('{} VGG19 variable(s)'.format(np.sum([
+            np.prod(v.get_shape().as_list()) 
+            for v in tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='VGG19')
+        ])))
         if SHOW_TENSORS_LIST:
             INFO('{} tensors: ['.format(len(tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES))))
             tensors_list = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES)
             print('    {}{}]'.format(',{}    '.format(os.linesep).join(map(lambda t: t.name, tensors_list)), os.linesep))
-
+        
         LOG('Background queue setup')
         frames_queue = Queue()
         worker = Process(target=save_frame, args=[frames_queue])

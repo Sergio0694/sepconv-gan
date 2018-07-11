@@ -1,43 +1,36 @@
 import numpy as np
 import tensorflow as tf
 from __MACRO__ import BATCH_SIZE, TRAINING_IMAGES_SIZE
-from networks._tf import ROOT_SCOPE
+import networks._tf as _tf
 
 BGR_MEAN_PIXELS = np.array([103.939, 116.779, 123.68]).reshape((1,1,1,3)).astype(np.float32)
-RELU4_4_NAME = 'block4_conv4/Relu:0'
-OUTPUT_POOL_NAME = 'block5_pool/MaxPool:0'
+RELU4_4_NAME_TOKENS = 'block4_conv4/Relu:0'.split('/')
 
-def get_base(x):
-    '''Gets the base of the VGG19 network, without the fully connected layers.
+def get_networks(args):
+    '''Creates multiple instances of the VGG19, with shared weights.
 
-    x(tf.Tensor) -- the input tensor
+    args(dict<str, tf.Tensor>) -- the map of input tensors and their name (used for the scope)
     '''
 
-    with tf.variable_scope(ROOT_SCOPE, None, [x]):
-        with tf.variable_scope('VGG19', None, [x], reuse=tf.AUTO_REUSE):
-            processed_x = x - BGR_MEAN_PIXELS
-            tf.contrib.keras.applications.VGG19(weights='imagenet', include_top=False, input_tensor=processed_x)
-            name = '{}/{}'.format(tf.contrib.framework.get_name_scope(), OUTPUT_POOL_NAME)
-            return tf.get_default_graph().get_tensor_by_name(name)
+    if not args: return dict()
+
+    # load the reusable VGG19 model
+    with tf.variable_scope('VGG19', None, list(args.values()), reuse=tf.AUTO_REUSE):
+        outputs = dict()
+        model = tf.contrib.keras.applications.VGG19(weights='imagenet', include_top=False)
+        
+        # build the requested branches
+        for key in args:
+            args[key].set_shape([BATCH_SIZE, TRAINING_IMAGES_SIZE, TRAINING_IMAGES_SIZE, 3])
+            with tf.name_scope(key, None, [args[key]]):
+                processed_x = args[key] - BGR_MEAN_PIXELS
+            branch = model(processed_x)
+            with tf.name_scope(key, None, [branch]):
+                relu4 = _tf.get_parent_by_match(branch, RELU4_4_NAME_TOKENS)
+                outputs[key] = (relu4, branch)
+        return outputs
 
 def get_loss(yHat, y):
 
-    yHat.set_shape([BATCH_SIZE, TRAINING_IMAGES_SIZE, TRAINING_IMAGES_SIZE, 3])
-    y.set_shape([BATCH_SIZE, TRAINING_IMAGES_SIZE, TRAINING_IMAGES_SIZE, 3])
-
-    # VGG19 setup
-    with tf.variable_scope(ROOT_SCOPE, None, [yHat, y]):
-        with tf.variable_scope('VGG19', None, [yHat, y], reuse=tf.AUTO_REUSE):
-            with tf.name_scope('yHat', [yHat]):
-                processed_yHat = yHat - BGR_MEAN_PIXELS
-                tf.contrib.keras.applications.VGG19(weights='imagenet', include_top=False, input_tensor=processed_yHat)
-                name = '{}/{}'.format(tf.contrib.framework.get_name_scope(), RELU4_4_NAME)
-                relu4_4_yHat = tf.get_default_graph().get_tensor_by_name(name)
-            with tf.name_scope('y', [y]):
-                processed_y = y - BGR_MEAN_PIXELS
-                tf.contrib.keras.applications.VGG19(weights='imagenet', include_top=False, input_tensor=processed_y)
-                name = '{}/{}'.format(tf.contrib.framework.get_name_scope(), RELU4_4_NAME)
-                relu4_4_y = tf.get_default_graph().get_tensor_by_name(name)
-
     # perceptual loss
-    return tf.reduce_mean((relu4_4_yHat - relu4_4_y) ** 2)
+    return tf.reduce_mean((yHat[0] - y[0]) ** 2)

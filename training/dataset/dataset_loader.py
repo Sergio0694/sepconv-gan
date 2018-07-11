@@ -73,10 +73,11 @@ def load_discriminator_samples(path, size):
         tf.data.Dataset.from_tensor_slices(files) \
         .shuffle(len(files), reshuffle_each_iteration=True) \
         .map(lambda x: tf.py_func(tf_load_image, inp=[x, path], Tout=[tf.float32]), num_parallel_calls=cpu_count()) \
-        .filter(lambda x: tf.py_func(tf_ensure_min_variance, inp=[x], Tout=[tf.bool])) \
+        .map(lambda x: tf.py_func(tf_preprocess_train_image, inp=[x], Tout=[tf.float32]), num_parallel_calls=cpu_count()) \
+        .filter(lambda x: tf.py_func(tf_validate_variance, inp=[x], Tout=[tf.bool])) \
         .repeat() \
-        .batch(size) \
-        .prefetch(1)
+        .apply(tf.contrib.data.batch_and_drop_remainder(size)) \
+        .prefetch(2)
 
 # ====================
 # auxiliary methods
@@ -143,8 +144,8 @@ def tf_ensure_min_variance(sample):
 def tf_preprocess_train_images(samples, label):
     '''Clips the sample images and adds random perturbations to augment the dataset and increase variance.
     
-    samples(list<tf.string>) -- a tensor with the list of filenames to load
-    label(tf.string) -- a tensor with the filename of the ground truth image
+    samples(list<np.array>) -- a tensor with the list of filenames to load
+    label(np.array) -- a tensor with the filename of the ground truth image
     '''
     
     assert label.shape[0] >= TRAINING_IMAGES_SIZE and label.shape[1] >= TRAINING_IMAGES_SIZE
@@ -186,6 +187,26 @@ def tf_preprocess_train_images(samples, label):
         x = np.flip(x, 0)
 
     return x, y
+
+def tf_preprocess_train_image(image):
+    '''Clips a sample image and adds random perturbations to augment the dataset and increase variance.
+    
+    image(np.array) -- the image to process
+    '''
+    
+    assert image.shape[0] >= TRAINING_IMAGES_SIZE and image.shape[1] >= TRAINING_IMAGES_SIZE
+
+    # randomly resize the image to cover more view area with a single crop
+    y_t = randint(TRAINING_IMAGES_SIZE, label.shape[0] - 2 * MAX_FLOW) + 2 * MAX_FLOW
+    x_t = y_t * label.shape[1] // label.shape[0]
+    image = cv2.resize(image, (x_t, y_t))
+
+    # setup
+    x_offset = randint(max_flow_x, label.shape[1] - TRAINING_IMAGES_SIZE - max_flow_x)
+    y_offset = randint(max_flow_y, label.shape[0] - TRAINING_IMAGES_SIZE - max_flow_y)
+    
+    # same slicing for the label, regardless of the window size
+    return image[y_offset:y_offset + TRAINING_IMAGES_SIZE, x_offset:x_offset + TRAINING_IMAGES_SIZE, :]
 
 def tf_final_input_transform(samples, label):
     '''Reshapes the inputs as needed, and appends the flow estimation, if requested.'''

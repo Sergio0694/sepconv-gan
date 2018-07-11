@@ -230,7 +230,7 @@ def tf_calculate_batch_errors(samples, label):
     ]
 
 def tf_validate_variance(image):
-    mean, var = cv2.meanStdDev(image)
+    _, var = cv2.meanStdDev(image)
     return np.sum(var) / 3 > IMAGE_MEAN_VARIANCE
 
 def tf_ensure_difference_min_threshold(samples, label):
@@ -240,9 +240,6 @@ def tf_ensure_difference_min_threshold(samples, label):
     images(np.array) -- the input images
     threshold(int) -- the maximum squared difference between the first and last image
     '''
-
-    # check mean and variance
-    
 
     return all([
         IMAGE_DIFF_MIN_THRESHOLD < error

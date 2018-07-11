@@ -10,7 +10,7 @@ from __MACRO__ import *
 import dataset.dataset_loader as data_loader
 from helpers.logger import LOG, INFO, BAR, RESET_LINE
 import networks.discriminators.inception_resnet_mini as inception_mini
-import networks.perceptual_loss.vgg19 as vgg19
+import networks.pretrained.vgg19 as vgg19
 import networks._tf as _tf
 
 os.environ['CUDA_DEVICE_ORDER'] = 'PCI_BUS_ID'      # See issue #152
@@ -143,11 +143,10 @@ def run():
                 np.prod(v.get_shape().as_list()) 
                 for v in tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='discriminator')
             ])))
-        if PERCEPTUAL_LOSS_ENABLED:
-            INFO('{} perceptual model variable(s)'.format(np.sum([
-                np.prod(v.get_shape().as_list()) 
-                for v in tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='optimization/generator_opt/generator_loss')
-            ])))
+        if SHOW_TENSORS_LIST:
+            INFO('{} tensors: ['.format(len(tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES))))
+            tensors_list = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES)
+            print('    {}{}]'.format(',{}    '.format(os.linesep).join(map(lambda t: t.name, tensors_list)), os.linesep))
 
         LOG('Background queue setup')
         frames_queue = Queue()

@@ -2,7 +2,7 @@ from multiprocessing import Process, Queue
 import os
 from pathlib import Path
 from time import time
-from shutil import rmtree
+from shutil import rmtree, copyfile
 import cv2
 import tensorflow as tf
 import numpy as np
@@ -162,6 +162,7 @@ def run():
             session.run(train_init_op)
             _tf.initialize_variables(session)
             tf.train.Saver().save(session, TENSORBOARD_RUN_DIR) # store the .meta file once
+            copyfile(MACRO_PATH, os.path.join(TENSORBOARD_RUN_DIR, os.path.basename(MACRO_PATH))) # copy the __MACRO__.py file
             saver = tf.train.Saver(max_to_keep=MAX_MODELS_TO_KEEP)
             rates = _tf.DecayingRate(INITIAL_GENERATOR_LR, GENERATOR_LR_DECAY_RATE)
             samples, step, ticks_old = 0, 0, 0

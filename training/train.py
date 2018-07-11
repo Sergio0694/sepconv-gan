@@ -104,6 +104,7 @@ def run():
                         gen_loss = L_LOSS_FACTOR * tf.reduce_mean((yHat_255 - y) ** 2) + PERCEPTUAL_LOSS_FACTOR * vgg19.get_loss(vgg19_instances['yHat'], vgg19_instances['y'])
                     else:
                         raise ValueError('Invalid loss type')
+                    gen_own_loss = gen_loss # to track generator-only loss in inference mode
                     if DISCRIMINATOR_ENABLED:
                         gen_loss = gen_loss + tf.contrib.gan.losses.wargs.modified_generator_loss(disc_false) # ignored if discriminator is disabled
                     gen_loss = tf.verify_tensor_all_finite(gen_loss, 'NaN found in loss :(', 'NaN_check_output_loss')
@@ -140,7 +141,8 @@ def run():
             else:
                 merged_summary_train = tf.summary.merge([gen_loss_summary])
             test_loss = tf.placeholder(tf.float32, name='test_loss')
-            test_loss_summary = tf.summary.scalar('TEST_loss', test_loss)            
+            test_clipped_loss_summary = tf.summary.scalar('TEST_clipped_loss', test_loss)  
+            test_loss_summary = tf.summary.scalar('TEST_loss', test_loss)           
 
         # model info (while inside the graph)
         INFO('{} generator variable(s)'.format(np.sum([
@@ -188,22 +190,23 @@ def run():
                     step = samples // TENSORBOARD_LOG_INTERVAL
 
                     # log to tensorboard
-                    _, summary, gen_score = session.run(
-                        fetches + [merged_summary_train, gen_loss],
+                    step_results = session.run(
+                        [merged_summary_train, gen_loss] + fetches,
                         feed_dict={eta: lr, training: True})
                     RESET_LINE(True)
-                    LOG('#{}\tgen_loss: {:12.04f}'.format(step, gen_score))
-                    writer.add_summary(summary, samples)
+                    LOG('#{}\tgen_loss: {:12.04f}'.format(step, step_results[1]))
+                    writer.add_summary(step_results[0], samples)
 
                     # save the model
                     saver.save(session, TENSORBOARD_RUN_DIR, global_step=step, write_meta_graph=False)
 
                     # test the model
                     session.run(test_init_op)
-                    test_score, j = 0, 0
+                    test_clipped_score, test_score, j = 0, 0, 0
                     while True:
                         try:
-                            score, prediction = session.run([test_clipped_loss, uint8_img], feed_dict={training: False})
+                            clipped_score, score, prediction = session.run([test_clipped_loss, gen_own_loss, uint8_img], feed_dict={training: False})
+                            test_clipped_score += clipped_score
                             test_score += score
 
                             # save the generated images to track progress
@@ -215,12 +218,15 @@ def run():
                             break
                     
                     # log the test loss and restore the pipeline
+                    test_summary = session.run(test_clipped_loss_summary, feed_dict={test_loss: test_clipped_score})
+                    writer.add_summary(test_summary, samples)
                     test_summary = session.run(test_loss_summary, feed_dict={test_loss: test_score})
                     writer.add_summary(test_summary, samples)
                     session.run(train_init_op)
 
                     # display additional info and progress the learning rate in use
-                    INFO('{:12.04f}'.format(test_score))
+                    INFO('Clip: {:12.04f}'.format(test_clipped_score))
+                    INFO('Full: {:12.04f}'.format(test_score))
                     BAR(0, TRAINING_PROGRESS_BAR_LENGTH, ' {:.2f} sample(s)/s'.format(samples / (time() - time_start)))
                     ticks = 0
                     lr = rates.get()

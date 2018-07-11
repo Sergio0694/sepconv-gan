@@ -1,6 +1,8 @@
 from __MACRO__ import *
 import tensorflow as tf
 
+ROOT_SCOPE = tf.get_variable_scope()
+
 def minimize_with_clipping(optimizer, loss, clip=5.0, scope=None):
     '''Returns an operation that minimizes the input loss function, 
     while clipping the gradients by the specified local norm.
@@ -11,10 +13,11 @@ def minimize_with_clipping(optimizer, loss, clip=5.0, scope=None):
     scope(str) -- the optional scope for the variables of the optimizer'''
 
     gradients, variables = zip(*optimizer.compute_gradients(loss, var_list=tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope=scope)))
-    gradients = [
-        None if gradient is None else tf.clip_by_norm(gradient, clip)
-        for gradient in gradients
-    ]
+    with tf.name_scope('clipping'):
+        gradients = [
+            None if gradient is None else tf.clip_by_norm(gradient, clip)
+            for gradient in gradients
+        ]
     return optimizer.apply_gradients(zip(gradients, variables))
 
 def initialize_variables(session):

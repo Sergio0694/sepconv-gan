@@ -54,7 +54,6 @@ def luminance_loss(t1, t2):
 
     assert len(t1.shape) == 4
     assert t1.shape[-1] == 3
-    assert t1.shape == t2.shape
 
     def get_luminance(image):
         b, g, r = tf.unstack(image, axis=-1)

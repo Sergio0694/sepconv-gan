@@ -108,14 +108,14 @@ def run():
                             raise ValueError('Invalid loss type')
 
                     # luminance loss
-                    with tf.name_scope('luminance', None, [yHat, y, gen_loss]):
-                        if LUMINANCE_LOSS_FACTOR > 0.0:
-                            gen_loss = gen_loss + LUMINANCE_LOSS_FACTOR * _tf.luminance_loss(yHat_255, y / 255.0)
+                    if LUMINANCE_LOSS_FACTOR is not None:
+                        with tf.name_scope('luminance', None, [yHat, y, gen_loss]):
+                            gen_loss = gen_loss + LUMINANCE_LOSS_FACTOR * _tf.luminance_loss(yHat, y / 255.0)
                     gen_own_loss = gen_loss # to track generator-only loss in inference mode
 
                     # optional discriminator
-                    with tf.name_scope('adversarial', None, [disc_false, gen_loss]):
-                        if DISCRIMINATOR_ENABLED:
+                    if DISCRIMINATOR_ENABLED:
+                        with tf.name_scope('adversarial', None, [disc_false, gen_loss]):
                             gen_loss = gen_loss + DISCRIMINATOR_LOSS_FACTOR * tf.contrib.gan.losses.wargs.modified_generator_loss(disc_false) # ignored if discriminator is disabled
                     gen_loss = tf.verify_tensor_all_finite(gen_loss, 'NaN found in loss :(', 'NaN_check_output_loss')
                 

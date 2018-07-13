@@ -86,7 +86,7 @@ def process_frames(working_path, session):
 
         # inference
         prediction = session.run(yHat, feed_dict={x: frames})
-        frame_path = '{}\\{}_{}'.format(working_path, filename, extension)
+        frame_path = os.path.join(working_path, '{}_{}'.format(filename, extension))
         frames_queue.put((frame_path, prediction))
 
         # update the UI

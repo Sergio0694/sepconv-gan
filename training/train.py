@@ -119,8 +119,8 @@ def run():
 
                     # luminance loss
                     if LUMINANCE_LOSS_FACTOR is not None:
-                        with tf.name_scope('luminance', None, [yHat, y, gen_loss]):
-                            luminance_loss = LUMINANCE_LOSS_FACTOR * _tf.luminance_loss(yHat, y / 255.0)
+                        with tf.name_scope('luminance', None, [yHat_255, y, gen_loss]):
+                            luminance_loss = LUMINANCE_LOSS_FACTOR * _tf.luminance_loss(yHat_255, y)
                             gen_loss = gen_loss + luminance_loss
                             merged_summary_train += [tf.summary.scalar('lum_loss', luminance_loss)]
                     gen_own_loss = gen_loss # to track generator-only loss in inference mode

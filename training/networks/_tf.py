@@ -57,7 +57,7 @@ def luminance_loss(t1, t2):
 
     def get_luminance(image):
         b, g, r = tf.unstack(image, axis=-1)
-        return tf.sqrt(0.114 * b ** 2 + 0.587 * g ** 2 + 0.299 * r ** 2)     
+        return 0.0722 * b + 0.7152 * g + 0.2126 * r   
     
     return tf.reduce_mean((get_luminance(t1) - get_luminance(t2)) ** 2)
 

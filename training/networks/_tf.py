@@ -46,6 +46,7 @@ def get_parent_by_match(tensor, tokens):
 
 def luminance_loss(t1, t2):
     '''Gets a loss based on the L2 error on the luminance difference between the two input tensors.
+    The input images must have values in the [0, 1] range.
 
     t1(tf.Tensor) -- a tensor which represents a batch of BGR images [b, h, w, 3]
     t2(tf.Tensor) -- a tensor with the same shape as the other

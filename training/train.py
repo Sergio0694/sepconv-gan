@@ -92,6 +92,7 @@ def run():
             with tf.variable_scope('gen_optimizer', None, generator_loss_inputs):
                 with tf.variable_scope('gen_loss', None, generator_loss_inputs):
 
+                    # main loss
                     if GENERATOR_LOSS_TYPE == LossType.L1:
                         gen_loss = tf.reduce_mean(tf.abs(yHat_255 - y))
                     elif GENERATOR_LOSS_TYPE == LossType.L2:
@@ -104,9 +105,15 @@ def run():
                         gen_loss = L_LOSS_FACTOR * tf.reduce_mean((yHat_255 - y) ** 2) + PERCEPTUAL_LOSS_FACTOR * vgg19.get_loss(vgg19_instances['yHat'], vgg19_instances['y'])
                     else:
                         raise ValueError('Invalid loss type')
+
+                    # luminance loss
+                    if LUMINANCE_LOSS_FACTOR > 0.0:
+                        gen_loss = gen_loss + LUMINANCE_LOSS_FACTOR * _tf.luminance_loss(yHat_255, y)
                     gen_own_loss = gen_loss # to track generator-only loss in inference mode
+
+                    # optional discriminator
                     if DISCRIMINATOR_ENABLED:
-                        gen_loss = gen_loss + tf.contrib.gan.losses.wargs.modified_generator_loss(disc_false) # ignored if discriminator is disabled
+                        gen_loss = gen_loss + DISCRIMINATOR_LOSS_FACTOR * tf.contrib.gan.losses.wargs.modified_generator_loss(disc_false) # ignored if discriminator is disabled
                     gen_loss = tf.verify_tensor_all_finite(gen_loss, 'NaN found in loss :(', 'NaN_check_output_loss')
                 
                 # optimizer

@@ -44,6 +44,23 @@ def get_parent_by_match(tensor, tokens):
         return get_parent_by_match(parent, tokens)
     return None
 
+def luminance_loss(t1, t2):
+    '''Gets a loss based on the L2 error on the luminance difference between the two input tensors.
+
+    t1(tf.Tensor) -- a tensor which represents a batch of BGR images [b, h, w, 3]
+    t2(tf.Tensor) -- a tensor with the same shape as the other
+    '''
+
+    assert len(t1.shape) == 4
+    assert t1.shape[-1] == 3
+    assert t1.shape == t2.shape
+
+    def get_luminance(image):
+        b, g, r = tf.unstack(image, axis=-1)
+        return tf.sqrt(0.114 * b ** 2 + 0.587 * g ** 2 + 0.299 * r ** 2)     
+    
+    return tf.reduce_mean((get_luminance(t1) - get_luminance(t2)) ** 2)
+
 class DynamicRate(object):
     '''A class that produces learning rates as specified from the 
     initial mapping of custom rates to training epochs.

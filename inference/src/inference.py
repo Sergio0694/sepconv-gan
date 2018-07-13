@@ -5,6 +5,7 @@ import cv2
 import tensorflow as tf
 import src.dataset_loader as dataset
 from src.__MACRO__ import LOG, INFO, BAR, RESET_LINE
+from src.ops.gpu_ops import load_ops
 
 PROGRESS_BAR_LENGTH = 20
 
@@ -31,6 +32,7 @@ def open_session(model_path, dataset_path):
     dataset_path(str) -- the path to the dataset to process
     '''
 
+    load_ops()
     session = tf.Session()
 
     # restore the model from the .meta and check point files

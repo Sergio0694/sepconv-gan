@@ -3,8 +3,8 @@ __pycache__/
 *.py[cod]
 *$py.class
 
-# C extensions
-*.so
+# object files and libraries
+training/**/*.so
 *.o
 
 # VS data

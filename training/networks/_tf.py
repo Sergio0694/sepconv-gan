@@ -1,8 +1,6 @@
 from __MACRO__ import *
 import tensorflow as tf
 
-ROOT_SCOPE = tf.get_variable_scope()
-
 def minimize_with_clipping(optimizer, loss, clip=5.0, scope=None):
     '''Returns an operation that minimizes the input loss function, 
     while clipping the gradients by the specified local norm.
@@ -32,6 +30,19 @@ def initialize_variables(session):
     
     if len(not_initialized_vars):
         session.run(tf.variables_initializer(not_initialized_vars))
+
+def get_parent_by_match(tensor, tokens):
+    '''Retrieves the parent tensor with the specified name parts.
+
+    tensor(tf.Tensor) -- the child tensor
+    tokens(list<str>) -- the name parts to look for
+    '''
+
+    for parent in tensor.op.inputs:
+        if all((token in parent.name for token in tokens)):
+            return parent
+        return get_parent_by_match(parent, tokens)
+    return None
 
 class DynamicRate(object):
     '''A class that produces learning rates as specified from the 

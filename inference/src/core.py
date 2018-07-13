@@ -83,20 +83,20 @@ def convert(args):
 
             # duplicate the last frame (no interpolation available)
             copy_filename = '{}_{}'.format(re.findall('([0-9]+)', frames[-1])[0], frames[-1][-4:])
-            copyfile('{}\\{}'.format(frames_path, frames[-1]), '{}\\{}'.format(frames_path, copy_filename))
+            copyfile(os.path.join(frames_path, frames[-1]), os.path.join(frames_path, copy_filename))
             frames += [copy_filename]
             INFO('{} total frame(s) to encode'.format(len(frames)))
 
             # rename the source frames to encode
             for i in range(len(frames), 0, -1):
-                source = '{}\\{}'.format(frames_path, frames[i - 1])
-                destination = '{}\\{:03d}.{}'.format(frames_path, i, args['frame_quality'])
+                source = os.path.join(frames_path, frames[i - 1])
+                destination = os.path.join(frames_path, '{:05d}.{}'.format(i, args['frame_quality']))
                 os.rename(source, destination)
 
             # encode the interpolated video
             LOG('Encoding video chunk #{}'.format(video_timestep // step_size))
             chunk_path = os.path.join(args['working_dir'], '_{}.mp4'.format(chunk_timestep))
-            ffmpeg.create_video('{}\\%03d.{}'.format(frames_path, args['frame_quality']), chunk_path, in_fps, out_fps, args['encoder'], args['crf'], args['preset'])
+            ffmpeg.create_video(os.path.join(frames_path, '%05d.{}'.format(args['frame_quality'])), chunk_path, in_fps, out_fps, args['encoder'], args['crf'], args['preset'])
             chunks_paths += [chunk_path]
             chunk_timestep += 1
 

@@ -45,7 +45,7 @@ def tf_load_images(samples, directory):
     
     # load the frames
     frames = [
-        cv2.imread('{}\\{}'.format(str(directory)[2:-1], str(sample)[2:-1])).astype(np.float32)
+        cv2.imread(os.path.join(str(directory)[2:-1], str(sample)[2:-1])).astype(np.float32)
         for sample in samples
     ]
 

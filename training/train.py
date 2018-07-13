@@ -93,24 +93,36 @@ def run():
                 with tf.variable_scope('losses', None, generator_loss_inputs):
 
                     # main loss
+                    merged_summary_train = []
                     with tf.name_scope('main', None, [yHat_255, y]):
                         if GENERATOR_LOSS_TYPE == LossType.L1:
                             gen_loss = tf.reduce_mean(tf.abs(yHat_255 - y))
+                            merged_summary_train += [tf.summary.scalar('L1_loss', gen_loss)]
                         elif GENERATOR_LOSS_TYPE == LossType.L2:
                             gen_loss = tf.reduce_mean((yHat_255 - y) ** 2)
+                            merged_summary_train += [tf.summary.scalar('L2_loss', gen_loss)]
                         elif GENERATOR_LOSS_TYPE == LossType.PERCEPTUAL:
                             gen_loss = vgg19.get_loss(vgg19_instances['yHat'], vgg19_instances['y'])
+                            merged_summary_train += [tf.summary.scalar('P_loss', gen_loss)]
                         elif GENERATOR_LOSS_TYPE == LossType.L1_PERCEPTUAL:
-                            gen_loss = L_LOSS_FACTOR * tf.reduce_mean(tf.abs(yHat_255 - y)) + PERCEPTUAL_LOSS_FACTOR * vgg19.get_loss(vgg19_instances['yHat'], vgg19_instances['y'])
+                            l_loss, p_loss = L_LOSS_FACTOR * tf.reduce_mean(tf.abs(yHat_255 - y)), PERCEPTUAL_LOSS_FACTOR * vgg19.get_loss(vgg19_instances['yHat'], vgg19_instances['y'])
+                            gen_loss = l_loss + p_loss
+                            merged_summary_train += [tf.summary.scalar('L1_loss', l_loss)]
+                            merged_summary_train += [tf.summary.scalar('P_loss', p_loss)]
                         elif GENERATOR_LOSS_TYPE == LossType.L2_PERCEPTUAL:
-                            gen_loss = L_LOSS_FACTOR * tf.reduce_mean((yHat_255 - y) ** 2) + PERCEPTUAL_LOSS_FACTOR * vgg19.get_loss(vgg19_instances['yHat'], vgg19_instances['y'])
+                            l_loss, p_loss = L_LOSS_FACTOR * tf.reduce_mean((yHat_255 - y) ** 2), PERCEPTUAL_LOSS_FACTOR * vgg19.get_loss(vgg19_instances['yHat'], vgg19_instances['y'])
+                            gen_loss = l_loss + p_loss
+                            merged_summary_train += [tf.summary.scalar('L2_loss', l_loss)]
+                            merged_summary_train += [tf.summary.scalar('P_loss', p_loss)]
                         else:
                             raise ValueError('Invalid loss type')
 
                     # luminance loss
                     if LUMINANCE_LOSS_FACTOR is not None:
                         with tf.name_scope('luminance', None, [yHat, y, gen_loss]):
-                            gen_loss = gen_loss + LUMINANCE_LOSS_FACTOR * _tf.luminance_loss(yHat, y / 255.0)
+                            luminance_loss = LUMINANCE_LOSS_FACTOR * _tf.luminance_loss(yHat, y / 255.0)
+                            gen_loss = gen_loss + luminance_loss
+                            merged_summary_train += [tf.summary.scalar('lum_loss', luminance_loss)]
                     gen_own_loss = gen_loss # to track generator-only loss in inference mode
 
                     # optional discriminator
@@ -145,13 +157,13 @@ def run():
         # summaries
         with tf.name_scope('summaries'):
             if DISCRIMINATOR_ENABLED:
-                merged_summary_train = tf.summary.merge([
+                merged_summary_train = tf.summary.merge(merged_summary_train + [
                     tf.summary.scalar('TRAIN_gen_own_loss', gen_own_loss),
                     tf.summary.scalar('TRAIN_gen_loss', gen_loss),
                     tf.summary.scalar('TRAIN_disc_loss', disc_loss)
                 ])
             else:
-                merged_summary_train = tf.summary.merge([tf.summary.scalar('TRAIN_gen_own_loss', gen_own_loss)])
+                merged_summary_train = tf.summary.merge(merged_summary_train + [tf.summary.scalar('TRAIN_gen_own_loss', gen_own_loss)])
             test_loss = tf.placeholder(tf.float32, name='test_loss')
             test_clipped_loss_summary = tf.summary.scalar('TEST_clipped_loss', test_loss)  
             test_loss_summary = tf.summary.scalar('TEST_loss', test_loss)           

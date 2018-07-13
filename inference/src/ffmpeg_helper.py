@@ -49,9 +49,10 @@ def extract_frames(video_path, output_folder, scale=None, start=0, duration=60, 
         ['-qmin', '1'] +
         ['-qmax', '1'] +
         ['-v', 'quiet'] +
-        ['"{}"'.format(os.path.join(output_folder, '{}%05d{}'.format(suffix, extension)))])
+        ['"{}"'.format(os.path.join(output_folder, '{}%05d.{}'.format(suffix, extension)))])
 
-    Popen(' '.join(args), shell=True).communicate()
+    output, err = Popen(' '.join(args), shell=True, stdout=PIPE, stderr=PIPE).communicate()
+    return len(output) == 0 and len(err) == 0
 
 def create_video(frames_path, output_path, in_fps, out_fps, encoder='h264', crf='23', preset='normal'):
     '''Creates an interpolated video from the input frames.

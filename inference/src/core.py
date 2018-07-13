@@ -63,10 +63,10 @@ def convert(args):
             extract_ok = ffmpeg.extract_frames(
                 args['source'], frames_path,
                 [args['scale'], -1] if args['scale'] is not None else None,
-                video_timestep, step_size, extension=args['frame_quality'], timeout=None)
+                video_timestep, step_size, extension=args['frame_quality'])
 
             # progress checks
-            if not extract_ok or (video_timestep == 0 and not os.listdir(frames_path)): 
+            if not extract_ok or (video_timestep == 0 and not os.listdir(frames_path)):
                 rmtree(args['working_dir'])
                 ERROR('Failed to extract frames')
             video_timestep += step_size

@@ -1,5 +1,5 @@
 from multiprocessing import Process, Queue
-from os import listdir
+import os
 from time import time
 import cv2
 import tensorflow as tf
@@ -35,8 +35,8 @@ def open_session(model_path, dataset_path):
 
     # restore the model from the .meta and check point files
     LOG('Restoring model')
-    meta_file_path = [path for path in listdir(model_path) if path.endswith('.meta')][0]
-    saver = tf.train.import_meta_graph('{}\\{}'.format(model_path, meta_file_path))
+    meta_file_path = [path for path in os.listdir(model_path) if path.endswith('.meta')][0]
+    saver = tf.train.import_meta_graph(os.path.join(model_path, meta_file_path))
     saver.restore(session, tf.train.latest_checkpoint(model_path))
 
     # setup the input pipeline

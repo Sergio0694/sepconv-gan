@@ -22,7 +22,7 @@ def setup():
     parser.add_argument('--max-diff-threshold', default=IMAGE_DIFF_MAX_THRESHOLD, help='The maximum difference between consecutive video frames.')
     parser.add_argument('--max-subsequence-length', default=MAX_SUBSEQUENCE_LENGTH, help='The maximum length of a series of consecutive frames.')
     parser.add_argument('-color', help='Indicates whether or not to just consider colored frames.', action='store_true')
-    parser.add_argument('-timeout', default=10, help='Optional timeout for the frames extraction operation.')
+    parser.add_argument('-timeout', default=60, help='Optional timeout for the frames extraction operation.')
     parser.add_argument('--batch-size', default=128, help='The size of each processing batch.')
     parser.add_argument('--index-offset', default=0, help='Initial offset for the video index, to append new frames.')
     parser.add_argument('-output', help='The output path for the created dataset', required=True)

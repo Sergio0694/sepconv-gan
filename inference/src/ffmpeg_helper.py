@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 from subprocess import call, Popen, PIPE, STDOUT, TimeoutExpired
 
@@ -9,6 +10,7 @@ def get_video_info(video_path):
 
     output = Popen(
         'ffprobe -v quiet -of csv=p=0 -select_streams v:0 -show_entries stream=width,height,r_frame_rate,duration "{}"'.format(video_path),
+        shell=True,
         stdout=PIPE,
         stderr=STDOUT).communicate()
     try:
@@ -18,7 +20,7 @@ def get_video_info(video_path):
         return None, None, None, None
 
 
-def extract_frames(video_path, output_folder, scale=None, start=0, duration=60, suffix='', extension='jpg', timeout=10):
+def extract_frames(video_path, output_folder, scale=None, start=0, duration=60, suffix='', extension='jpg'):
     '''Exports a series of frames from the input video to the specified folder.
 
     video_path(str) -- the path to the input video
@@ -29,8 +31,7 @@ def extract_frames(video_path, output_folder, scale=None, start=0, duration=60, 
     suffix(str) -- an identifier for the exported frames
     extension(str) -- the preferred image extension for the exported frames (jpg|png|bmp)
     '''
-    
-    assert timeout is None or timeout >= 10
+
     assert start >= 0
     assert duration >= 1 # really?
     assert scale is None or \
@@ -38,38 +39,19 @@ def extract_frames(video_path, output_folder, scale=None, start=0, duration=60, 
             and (scale[1] >= 240 or scale[1] == -1) and not (scale[0] == -1 and scale[1] == -1))
 
     Path(output_folder).mkdir(exist_ok=True)
-    args = [
-        'ffmpeg',
-        '-i', video_path,
-        '-to', str(duration),   # -ss resets the timestep to target start time
-        '-q:v', '1',
-        '-qmin', '1',
-        '-qmax', '1',
-        '-pix_fmt', 'rgb24',
-        '-v', 'quiet',
-        '{}\\{}%03d.{}'.format(output_folder, suffix, extension)
-    ]
+    args = (
+        ['ffmpeg'] +
+        (['-ss', str(start)] if start > 0 else []) + # optional start time
+        ['-i', '"{}"'.format(video_path)] +
+        ['-to', str(duration)] + # -ss resets the timestep to target start time
+        (['-vf', 'scale={}:{}'.format(scale[0], scale[1])] if scale is not None else []) + # optional rescaling
+        ['-q:v', '1'] +
+        ['-qmin', '1'] +
+        ['-qmax', '1'] +
+        ['-v', 'quiet'] +
+        ['"{}"'.format(os.path.join(output_folder, '{}%05d{}'.format(suffix, extension)))])
 
-    # optional start time
-    if start > 0:
-        args.insert(1, '-ss')   # insert as first argument
-        args.insert(2, str(start))
-
-    # optional rescaling
-    if scale is not None:
-        index = args.index('-to') + 2   # insert after the -to argument
-        args.insert(index, '-vf')
-        args.insert(index + 1, 'scale={}:{}'.format(scale[0], scale[1]))
-
-    if timeout:
-        try:
-            call(args, timeout=10)
-            return True
-        except TimeoutExpired:
-            return False
-    else:
-        call(args)
-        return True
+    Popen(' '.join(args), shell=True).communicate()
 
 def create_video(frames_path, output_path, in_fps, out_fps, encoder='h264', crf='23', preset='normal'):
     '''Creates an interpolated video from the input frames.
@@ -83,7 +65,7 @@ def create_video(frames_path, output_path, in_fps, out_fps, encoder='h264', crf=
     preset(str) -- the encoder preset to use
     '''
 
-    call([
+    args = [
         'ffmpeg',
         '-y',
         '-loglevel', 'error',
@@ -96,8 +78,9 @@ def create_video(frames_path, output_path, in_fps, out_fps, encoder='h264', crf=
         '-r', out_fps,
         '-pix_fmt', 'yuv420p',
         output_path
-    ])
-    return output_path
+    ]
+
+    Popen(' '.join(args), shell=True).communicate()
 
 def concat_videos(list_path, original_path, output_path):
     '''Creates a new video by concatenating the source chunks from the input
@@ -108,16 +91,16 @@ def concat_videos(list_path, original_path, output_path):
     output_path(str) -- the path of the output video to create'''
 
     if original_path is None:
-        call([
+        args = [
             'ffmpeg',
             '-f', 'concat',
             '-safe', '0', # not really necessary
             '-i', list_path,
             '-c', 'copy',
             output_path
-        ])
+        ]
     else:
-        call([
+        args = [
             'ffmpeg',
             '-f', 'concat',
             '-safe', '0', # not really necessary
@@ -127,4 +110,6 @@ def concat_videos(list_path, original_path, output_path):
             '-map', '0:v:0',
             '-map', '1:a:0',
             output_path
-        ])
+        ]
+    
+    Popen(' '.join(args), shell=True).communicate()

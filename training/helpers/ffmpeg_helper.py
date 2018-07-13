@@ -16,7 +16,7 @@ def extract_frames(video_path, output_folder, scale=None, start=0, duration=60, 
     '''
     
     assert video_path is not None and output_folder is not None
-    assert timeout is None or timeout >= 10
+    assert timeout is not None
     assert start >= 0
     assert duration >= 1 # really?
     assert scale is None or \
@@ -37,15 +37,11 @@ def extract_frames(video_path, output_folder, scale=None, start=0, duration=60, 
         ['-v', 'quiet'] +
         ['"{}"'.format(os.path.join(output_folder, '{}%05d{}'.format(suffix, extension)))])
 
-    if timeout:
-        try:
-            Popen(' '.join(args), shell=True, stdout=PIPE, stderr=STDOUT).communicate(timeout=timeout)
-            return True
-        except TimeoutExpired:
-            return False
-    else:
-        Popen(' '.join(args), shell=True, stdout=PIPE, stderr=STDOUT).communicate()
+    try:
+        Popen(' '.join(args), shell=True, stdout=PIPE, stderr=STDOUT).communicate(timeout=timeout)
         return True
+    except TimeoutExpired:
+        return False
 
 def get_video_duration(video_path):
     '''Returns the duration of the video specified by the given path, in seconds.

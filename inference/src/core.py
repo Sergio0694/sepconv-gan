@@ -3,7 +3,7 @@ import re
 from shutil import copyfile, rmtree
 import src.ffmpeg_helper as ffmpeg
 from src.__MACRO__ import LOG, INFO, ERROR
-from src.inference import process_frames, open_session
+from src.video_inference import process_frames, open_session
 
 def frames_name_comparer(name):
     '''Compares two filenames and returns a tuple indicating

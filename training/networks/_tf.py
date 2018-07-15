@@ -59,7 +59,7 @@ def luminance_loss(t1, t2):
         b, g, r = tf.unstack(image, axis=-1)
         return 0.0722 * b + 0.7152 * g + 0.2126 * r   
     
-    return tf.reduce_mean((get_luminance(t1) - get_luminance(t2)) ** 2)
+    return tf.reduce_mean((get_luminance(t1) - get_luminance(t2)) ** 2) * 255.0
 
 class DynamicRate(object):
     '''A class that produces learning rates as specified from the 

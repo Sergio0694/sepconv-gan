@@ -187,9 +187,16 @@ def tf_preprocess_train_images(samples, label):
     # same slicing for the label, regardless of the window size
     y = label[y_offset:y_offset + TRAINING_IMAGES_SIZE, x_offset:x_offset + TRAINING_IMAGES_SIZE, :]
 
-    # randomly reverse the frames order
-    if randint(0, 1) == 0:
-        x = np.flip(x, 0)
+    # random permutations
+    choice = randint(0, 2)
+    if choice == 0:
+        x = np.flip(x, 1)
+        y = np.flip(y, 0) # vertical flip
+    elif choice == 1:
+        x = np.flip(x, 2)
+        y = np.flip(y, 1) # horizontal flip
+    else:
+        x = np.flip(x, 0) # reverse the frames order
 
     return x, y
 

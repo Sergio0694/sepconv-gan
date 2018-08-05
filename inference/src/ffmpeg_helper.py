@@ -106,7 +106,7 @@ def concat_videos(list_path, original_path, output_path):
             '-f', 'concat',
             '-safe', '0', # not really necessary
             '-i', list_path,
-            '-i', original_path,
+            '-i', '"{}"'.format(original_path),
             '-c', 'copy',
             '-map', '0:v:0',
             '-map', '1:a:0',

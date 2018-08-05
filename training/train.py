@@ -1,3 +1,4 @@
+import argparse
 from multiprocessing import Process, Queue
 import os
 from pathlib import Path
@@ -16,9 +17,9 @@ import networks._tf as _tf
 os.environ['CUDA_DEVICE_ORDER'] = 'PCI_BUS_ID'      # See issue #152
 os.environ['CUDA_VISIBLE_DEVICES'] = '1'            # GTX1080 only
 
-def run():
+def cleanup():
+    '''Deletes leftover folders for previous unfinished training sessions.'''
 
-    # cleanup
     LOG('Cleanup')
     leftovers = os.listdir(TENSORBOARD_ROOT_DIR)
     filename = next((x for x in leftovers if x.endswith('.meta')), None)
@@ -31,6 +32,11 @@ def run():
     for subdir in (x for x in leftovers if os.path.isdir(os.path.join(TENSORBOARD_ROOT_DIR, x))):
         if not '_1' in os.listdir(os.path.join(TENSORBOARD_ROOT_DIR, subdir)):
             rmtree(os.path.join(TENSORBOARD_ROOT_DIR, subdir))
+
+def run(model_path):
+
+    # cleanup
+    cleanup()
 
     # graph setup
     with tf.Session() as session:
@@ -208,6 +214,10 @@ def run():
             lr = rates.get()
             fetches = [gen_optimizer, disc_optimizer] if DISCRIMINATOR_ENABLED else [gen_optimizer]
 
+            # restore the previous session, if needed
+            if model_path is not None:
+                saver.restore(session, tf.train.latest_checkpoint(model_path))
+
             LOG('Training started...') 
             while samples < TRAINING_TOTAL_SAMPLES:
                 if samples // TENSORBOARD_LOG_INTERVAL > step:
@@ -282,4 +292,8 @@ def save_frame(queue):
         cv2.imwrite(task[0], task[1], [int(cv2.IMWRITE_PNG_COMPRESSION), 0])
 
 if __name__ == '__main__':
-    run()
+
+    parser = argparse.ArgumentParser(description='Trains a model with the specified parameters from the __MACRO__.py file.')
+    parser.add_argument('--model-path', help='The optional model file to resume a training session.', required=False)
+    args = vars(parser.parse_args())
+    run(args['model_path'] if 'model_path' in args else None)

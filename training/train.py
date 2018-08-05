@@ -7,12 +7,6 @@ from shutil import rmtree, copyfile
 import cv2
 import tensorflow as tf
 import numpy as np
-from __MACRO__ import *
-import dataset.dataset_loader as data_loader
-from helpers.logger import LOG, INFO, BAR, RESET_LINE
-import networks.discriminators.vgg19 as vgg19_discriminator
-import networks.pretrained.vgg19 as vgg19
-import networks._tf as _tf
 
 os.environ['CUDA_DEVICE_ORDER'] = 'PCI_BUS_ID'      # See issue #152
 os.environ['CUDA_VISIBLE_DEVICES'] = '1'            # GTX1080 only
@@ -293,7 +287,22 @@ def save_frame(queue):
 
 if __name__ == '__main__':
 
+    # args
     parser = argparse.ArgumentParser(description='Trains a model with the specified parameters from the __MACRO__.py file.')
     parser.add_argument('--model-path', help='The optional model file to resume a training session.', required=False)
     args = vars(parser.parse_args())
-    run(args['model_path'] if 'model_path' in args else None)
+    model_path = args['model_path'] if 'model_path' in args else None
+
+    # load the necessary modules
+    if model_path is not None:
+        import sys
+        sys.path.insert(0, sys.path.abspath(model_path))
+    from __MACRO__ import *
+    import dataset.dataset_loader as data_loader
+    from helpers.logger import LOG, INFO, BAR, RESET_LINE
+    import networks.discriminators.vgg19 as vgg19_discriminator
+    import networks.pretrained.vgg19 as vgg19
+    import networks._tf as _tf
+
+    # start or resume the training
+    run(model_path)

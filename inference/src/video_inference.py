@@ -5,7 +5,7 @@ import cv2
 import tensorflow as tf
 import src.dataset_loader as dataset
 from src.__MACRO__ import LOG, INFO, BAR, RESET_LINE
-from src.ops.gpu_ops import load_ops
+from src.ops.gpu_ops import NEAREST_SHADER_MODULE
 
 PROGRESS_BAR_LENGTH = 20
 
@@ -32,7 +32,6 @@ def open_session(model_path, dataset_path):
     dataset_path(str) -- the path to the dataset to process
     '''
 
-    load_ops()
     session = tf.Session()
 
     # restore the model from the .meta and check point files
@@ -50,7 +49,13 @@ def open_session(model_path, dataset_path):
     
     return session
 
-def process_frames(working_path, session):
+def process_frames(working_path, session, shader_enabled):
+    '''Produces a series of interpolated frames from a source collection of consecutive frames.
+
+    working_path(str) -- the path of the folder that contains the frames to process
+    session(tf.Session) -- the current TF session to use
+    shader_enabled(bool) -- indicates whether or not to apply the post-processing shader
+    '''
     
     # load the inference raw data
     LOG('Preparing frames')
@@ -72,6 +77,8 @@ def process_frames(working_path, session):
     session.run(pipeline_tensors[0].initializer, feed_dict={pipeline_placeholder: groups})
     x = graph.get_tensor_by_name('x:0')
     yHat = graph.get_tensor_by_name('inference/uint8_img:0')
+    if shader_enabled:
+        yHat = tf.cast(NEAREST_SHADER_MODULE.nearestshader(tf.cast(yHat, tf.float32), x[:, :, :, :3], x[:, :, :, 3:]), tf.uint8)
 
     # process the data
     LOG('Processing frames')

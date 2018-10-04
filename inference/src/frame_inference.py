@@ -3,7 +3,7 @@ import cv2
 import numpy as np
 import tensorflow as tf
 from src.__MACRO__ import LOG, ERROR
-from src.ops.gpu_ops import *
+from src.ops.gpu_ops import NEAREST_SHADER_MODULE
 
 def process_frames(model_path, path_0, path_1, shader_enabled):
     '''Generates an intermediate frame from the two in input.

@@ -74,7 +74,7 @@ def convert(args):
             # Inference pass on the n-th video chunk
             if not os.listdir(frames_path):
                 break
-            process_frames(frames_path, session)
+            process_frames(frames_path, session, args['post_processing'] == 'shader')
 
             # sort the frames by alternating the original and the interpolated
             LOG('Preparing generated frames')     

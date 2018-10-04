@@ -22,6 +22,7 @@ def setup():
                         '"double" keeps the original video length and doubles the framerate, while "half" maintains the input ' \
                         'framerate and makes the output video twice as long as the original, effectively slowing it down. ' \
                         'Using this mode will remove the audio from the output video, as it wouldn\'t have the right duration.')
+    parser.add_argument('--post-processing', default='default', help='The post-processing mode to apply to the generated frames [default|shader].', required=True)
     parser.add_argument('-output', help='The path of the output file to create', required=True)
     args = vars(parser.parse_args())
 
@@ -52,6 +53,8 @@ def setup():
         ERROR('Invalid preset value, see trac.ffmpeg.org/wiki/Encode/H.264 for more info.')
     if args['interpolation'] not in ['double', 'half']:
         ERROR('Invalid interpolation option selected')
+    if args['post_processing'] not in ['default', 'shader']:
+        ERROR('Invalid post-processing mode selected')
     if not args['output'].endswith('.mp4'):
         ERROR('The output file must have the .mp4 extension')
     

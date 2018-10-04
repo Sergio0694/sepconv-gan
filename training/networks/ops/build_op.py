@@ -20,6 +20,7 @@ def main():
     parser = argparse.ArgumentParser(description='Builds a TensorFlow GPU op from the input files.')
     parser.add_argument('-cc', help='The path of the .cc file to compile. Note that its parent directory ' \
                                     'must also contain a .cu.cc file with the same name.', required=True)
+    parser.add_argument('-mode', default='grad', help='Indicates how the operation is expected to be built. Can be either "grad" or "forward".')
     args = vars(parser.parse_args())
 
     # validate
@@ -28,6 +29,9 @@ def main():
     lib_path = os.path.join(os.path.dirname(args['cc']), args['cc'][:-3])
     if not os.path.isfile('{}.cu.cc'.format(lib_path)):
         raise ValueError('Linked .cu.cc file not found')
+    if args['mode'] not in ['grad', 'forward']:
+        ERROR('Invalid mode selected')
+    grad_included = args['mode'] == 'grad'
 
     # cleanup
     DELETE_IF_EXISTS('{}.cu.o'.format(lib_path))
@@ -39,10 +43,15 @@ def main():
     TF_LFLAGS = " ".join(tf.sysconfig.get_link_flags())
     nvcc_args = 'nvcc -std=c++11 -c -o {}.cu.o {}.cu.cc {} -D GOOGLE_CUDA=1 -x cu -Xcompiler -fPIC'.format(lib_path, lib_path, TF_CFLAGS)
     EXEC_AND_CHECK_ERRORS(nvcc_args)
-    nvcc_args = 'nvcc -std=c++11 -c -o {}_grad.cu.o {}_grad.cu.cc {} -D GOOGLE_CUDA=1 -x cu -Xcompiler -fPIC'.format(lib_path, lib_path, TF_CFLAGS)
-    EXEC_AND_CHECK_ERRORS(nvcc_args)
-    gcc_args = 'g++ -std=c++11 -shared -o {}.so {}.cc {}_grad.cc {}.cu.o {}_grad.cu.o {} -fPIC -lcudart {}'.format(lib_path, lib_path, lib_path, lib_path, lib_path, TF_CFLAGS, TF_LFLAGS)
-    EXEC_AND_CHECK_ERRORS(gcc_args)    
+
+    if grad_included:
+        nvcc_args = 'nvcc -std=c++11 -c -o {}_grad.cu.o {}_grad.cu.cc {} -D GOOGLE_CUDA=1 -x cu -Xcompiler -fPIC'.format(lib_path, lib_path, TF_CFLAGS)
+        EXEC_AND_CHECK_ERRORS(nvcc_args)
+        gcc_args = 'g++ -std=c++11 -shared -o {}.so {}.cc {}_grad.cc {}.cu.o {}_grad.cu.o {} -fPIC -lcudart {}'.format(lib_path, lib_path, lib_path, lib_path, lib_path, TF_CFLAGS, TF_LFLAGS)
+        EXEC_AND_CHECK_ERRORS(gcc_args)
+    else:
+        gcc_args = 'g++ -std=c++11 -shared -o {}.so {}.cc {}.cu.o {} -fPIC -lcudart {}'.format(lib_path, lib_path, lib_path, TF_CFLAGS, TF_LFLAGS)
+        EXEC_AND_CHECK_ERRORS(gcc_args)
 
 if __name__ == '__main__':
     main()

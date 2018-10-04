@@ -33,7 +33,7 @@ def convert(args):
     if duration < 2:
         ERROR('The video file is either empty or too short')
     INFO('Total duration: {}'.format(format_duration(duration)))
-    INFO('Framerate: {}/1001'.format(framerate))
+    INFO('Framerate: {}/{}'.format(framerate[0], framerate[1]))
     INFO('Resolution: {}x{}'.format(width, height))
 
     # Validate the target resolution
@@ -45,9 +45,9 @@ def convert(args):
 
     # calculate the framerate parameters to encode the video chunks
     if args['interpolation'] == 'double':
-        in_fps, out_fps = '{}/1001'.format(framerate * 2), '{}/1001'.format(framerate * 2)
+        in_fps, out_fps = '{}/{}'.format(framerate[0] * 2, framerate[1]), '{}/{}'.format(framerate[0] * 2, framerate[1])
     else:
-        in_fps, out_fps = '{}/1001'.format(framerate), '{}/1001'.format(framerate)
+        in_fps, out_fps = '{}/{}'.format(framerate[0], framerate[1]), '{}/{}'.format(framerate[0], framerate[1])
 
     # Loop until all video chunks have been created
     frames_path = os.path.join(args['working_dir'], 'frames')

@@ -15,7 +15,8 @@ def get_video_info(video_path):
         stderr=STDOUT).communicate()
     try:
         info = output[0].decode('utf-8').strip().split(',') # bytes from PIPE > decode in utf-8
-        return int(info[0]), int(info[1]), int(info[2].split('/')[0]), int(float(info[3]))  # [width, height, framerate, seconds]
+        fps = info[2].split('/')
+        return int(info[0]), int(info[1]), (int(fps[0]), int(fps[1])), int(float(info[3]))  # [width, height, framerate, seconds]
     except ValueError:
         return None, None, None, None
 

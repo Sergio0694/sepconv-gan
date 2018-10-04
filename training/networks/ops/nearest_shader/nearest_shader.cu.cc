@@ -48,7 +48,7 @@ __global__ void NearestShaderKernel(
 #define THREADS_PER_BLOCK_FORWARD 512
 
 void NearestShaderKernelLauncher(
-    float* input, 
+    const float* input, 
     const float* frame_0,
     const float* frame_1,
     const int n, 

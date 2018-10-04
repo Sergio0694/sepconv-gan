@@ -20,3 +20,6 @@ def _sepconv_grad(op, grad):
         op.inputs[1],
         op.inputs[2])               # kernels used in the forward pass
     return [None, kv_grad, kh_grad]
+
+NEAREST_SHADER_SO_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'nearest_shader', 'nearest_shader.so')
+NEAREST_SHADER_MODULE = tf.load_op_library(NEAREST_SHADER_SO_PATH)

@@ -2,7 +2,7 @@
 #include <cuda.h>
 #include <stdio.h>
 
-#define PIXEL_THRESHOLD 0.011764706
+#define PIXEL_THRESHOLD 2.1
 
 __global__ void NearestShaderKernel(
     const int ntasks,

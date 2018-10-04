@@ -3,14 +3,15 @@ import cv2
 import numpy as np
 import tensorflow as tf
 from src.__MACRO__ import LOG, ERROR
-from src.ops.gpu_ops import load_ops
+from src.ops.gpu_ops import *
 
-def process_frames(model_path, path_0, path_1):
+def process_frames(model_path, path_0, path_1, shader_enabled):
     '''Generates an intermediate frame from the two in input.
 
     model_path(str) -- the path of the saved model
     path_0(str) -- the path of the first frame
     path_1(str) -- the path of the second frame
+    shader_enabled(bool) -- indicates whether or not to apply the post-processing shader
     '''
 
     LOG('Preparing data')
@@ -18,7 +19,6 @@ def process_frames(model_path, path_0, path_1):
     if frame_0.shape != frame_1.shape:
         ERROR('The two input frames have a different size')
 
-    load_ops()
     with tf.Session() as session:
 
         # restore the model from the .meta and check point files
@@ -32,6 +32,8 @@ def process_frames(model_path, path_0, path_1):
         graph = tf.get_default_graph()
         x = graph.get_tensor_by_name('x:0')
         yHat = graph.get_tensor_by_name('inference/uint8_img:0')
+        if shader_enabled:
+            yHat = tf.cast(NEAREST_SHADER_MODULE.nearestshader(tf.cast(yHat, tf.float32), x[:, :, :, :3], x[:, :, :, 3:]), tf.uint8)
 
         # process the frames
         LOG('Processing')

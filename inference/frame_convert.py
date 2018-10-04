@@ -14,6 +14,7 @@ def setup():
     parser.add_argument('-source', help='The path of the first frame. Its filename must end with a sequence number, so that the script will ' \
                         'be able to automatically retrieve the path for the following frame.', required=True)
     parser.add_argument('--model-path', default=None, help='The folder with the trained model to use.', required=True)
+    parser.add_argument('--post-processing', default='default', help='The post-processing mode to apply to the generated frames.', required=True)
     args = vars(parser.parse_args())
 
     # validate
@@ -24,13 +25,17 @@ def setup():
         ERROR('The input path is not valid')
     index, extension = match[0]
     following = re.sub('[0-9]+[.](?:jpg|png|bmp)$', '{:03d}.{}'.format(int(index) + 1, extension), args['source'])
+    print(following)
     if not os.path.isfile(following):
         ERROR('Couldn\'t find the following frame for the one in input')
     if args['model_path'] is None or not os.path.isdir(args['model_path']):
         ERROR('The input model directory does not exist.')
+    if args['post_processing'] not in ['default', 'shader']:
+        ERROR('Invalid post-processing mode selected')
+    
     
     # process and display
-    prediction = process_frames(args['model_path'], args['source'], following)
+    prediction = process_frames(args['model_path'], args['source'], following, args['post_processing'] == 'shader')
     image = cv2.cvtColor(prediction, cv2.COLOR_BGR2RGB)
     plt.imshow(image)
     plt.show()

@@ -8,9 +8,6 @@ import cv2
 import tensorflow as tf
 import numpy as np
 
-os.environ['CUDA_DEVICE_ORDER'] = 'PCI_BUS_ID'      # See issue #152
-os.environ['CUDA_VISIBLE_DEVICES'] = '1'            # GTX1080 only
-
 def cleanup():
     '''Deletes leftover folders for previous unfinished training sessions.'''
 

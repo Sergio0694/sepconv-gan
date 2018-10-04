@@ -5,7 +5,7 @@
 
 using namespace tensorflow;
 
-REGISTER_OP("NearestShader")
+REGISTER_OP("Nearestshader")
     .Input("source: float")      // A [batch, height, width, 3] tensor
     .Input("frame_0: float")
     .Input("frame_1: float")
@@ -103,4 +103,4 @@ public:
     }
 };
 
-REGISTER_KERNEL_BUILDER(Name("NearestShader").Device(DEVICE_GPU), NearestShaderOpGPU);
+REGISTER_KERNEL_BUILDER(Name("Nearestshader").Device(DEVICE_GPU), NearestShaderOpGPU);

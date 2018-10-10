@@ -5,8 +5,8 @@ import networks.generators.deep_motion_sepconv as nn
 from helpers._cv2 import OpticalFlowEmbeddingType
 
 # paths
-TRAINING_DATASET_PATH = '/media/sergio/SSD/ML/th/datasets/720p'
-TEST_DATASET_PATH = '/media/sergio/SSD/ML/th/datasets/test_1080'
+TRAINING_DATASET_PATH = '/media/sergio/SSD/ML/datasets/frames_720p'
+TEST_DATASET_PATH = '/media/sergio/SSD/ML/datasets/test_1080'
 
 # preprocessing parameters
 TRAINING_IMAGES_SIZE = 160

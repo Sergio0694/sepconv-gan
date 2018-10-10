@@ -207,6 +207,7 @@ def run(model_path):
 
             # restore the previous session, if needed
             if model_path is not None:
+                LOG('Restoring previous model...')
                 saver.restore(session, tf.train.latest_checkpoint(model_path))
 
             LOG('Training started...') 
@@ -288,12 +289,11 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Trains a model with the specified parameters from the __MACRO__.py file.')
     parser.add_argument('--model-path', help='The optional model file to resume a training session.', required=False)
     args = vars(parser.parse_args())
-    model_path = args['model_path'] if 'model_path' in args else None
 
     # load the necessary modules
-    if model_path is not None:
+    if args['model_path'] is not None:
         import sys
-        sys.path.insert(0, sys.path.abspath(model_path))
+        sys.path.insert(0, os.path.abspath(args['model_path']))
     from __MACRO__ import *
     import dataset.dataset_loader as data_loader
     from helpers.logger import LOG, INFO, BAR, RESET_LINE
@@ -302,4 +302,4 @@ if __name__ == '__main__':
     import networks._tf as _tf
 
     # start or resume the training
-    run(model_path)
+    run(args['model_path'])

@@ -2,45 +2,60 @@
 #include <cuda.h>
 #include <stdio.h>
 
-#define PIXEL_THRESHOLD 2.1
+#define B(tensor, i) tensor[i]
+#define G(tensor, i) tensor[i + 1]
+#define R(tensor, i) tensor[i + 2]
+#define LERP(factor, a, b) a + (b - a) * factor
+
+#define THRESHOLD 3.1
+#define MIN 0
+#define MAX 10.1
 
 __global__ void NearestShaderKernel(
     const int ntasks,
     const float* input,
     const float* frame_0,
     const float* frame_1,
-    const int h, 
+    const int h,
     const int w,
     float* output)
 {
     // Get offset, abort if over the threshold
-    unsigned int idx = blockIdx.x * blockDim.x + threadIdx.x; 
+    const unsigned int idx = blockIdx.x * blockDim.x + threadIdx.x; 
     if (idx >= ntasks) return;
 
     // Retrieve the current position
-    int in = (idx / h);
-    int iy = (idx)      % h;
+    const int in = (idx / h);
+    const int iy = (idx)      % h;
 
     // Derived pitches
-    int _y_offset = (in * h * w * 3) + iy * w * 3;
-    int end = w * 3;
+    const int _y_offset = (in * h * w * 3) + iy * w * 3;
+    const int end = w * 3;
     
     // Apply the pixel shader
     for (int x = 0; x < end; x += 3)
     {
-        if (abs(frame_0[_y_offset + x] - frame_1[_y_offset + x]) < PIXEL_THRESHOLD &&
-            abs(frame_0[_y_offset + x + 1] - frame_1[_y_offset + x + 1]) < PIXEL_THRESHOLD &&
-            abs(frame_0[_y_offset + x + 2] - frame_1[_y_offset + x + 2]) < PIXEL_THRESHOLD)
+        const int xy = _y_offset + x;
+        if (fabsf(B(frame_0, xy) - B(frame_1, xy)) < THRESHOLD &&
+            fabsf(G(frame_0, xy) - G(frame_1, xy)) < THRESHOLD &&
+            fabsf(R(frame_0, xy) - R(frame_1, xy)) < THRESHOLD)
         {
-            output[_y_offset + x] = (frame_0[_y_offset + x] + frame_1[_y_offset + x]) / 2;
-            output[_y_offset + x + 1] = (frame_0[_y_offset + x + 1] + frame_1[_y_offset + x + 1]) / 2;
-            output[_y_offset + x + 2] = (frame_0[_y_offset + x + 2] + frame_1[_y_offset + x + 2]) / 2;
+            const float b = (B(frame_0, xy) + B(frame_1, xy)) / 2;
+            const float g = (G(frame_0, xy) + G(frame_1, xy)) / 2;
+            const float r = (R(frame_0, xy) + R(frame_1, xy)) / 2;
+            const float d = (fabsf(b - B(input, xy)) + fabsf(g - G(input, xy)) + fabsf(r - R(input, xy))) / 3;
+            const float d_clip = fmaxf(MIN, fminf(MAX, d));
+            const float f = (d_clip - MIN) / (MAX - MIN);
+            B(output, xy) = LERP(f, B(input, xy), b);
+            G(output, xy) = LERP(f, G(input, xy), g);
+            R(output, xy) = LERP(f, R(input, xy), r);
         }
         else
         {
-            output[_y_offset + x] = input[_y_offset + x];
-            output[_y_offset + x + 1] = input[_y_offset + x + 1];
-            output[_y_offset + x + 2] = input[_y_offset + x + 2];
+            // Fallback
+            B(output, xy) = B(input, xy);
+            G(output, xy) = G(input, xy);
+            R(output, xy) = R(input, xy);
         }
     }
 }
@@ -61,5 +76,5 @@ void NearestShaderKernelLauncher(
         ntasks, input, frame_0, frame_1, h, w, output);
     cudaError_t cudaerr = cudaDeviceSynchronize();
     if (cudaerr != cudaSuccess)
-        printf("SepConv launch failed with error \"%s\".\n", cudaGetErrorString(cudaerr));
+        printf("Shader launch failed with error \"%s\".\n", cudaGetErrorString(cudaerr));
 }

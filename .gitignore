@@ -5,6 +5,7 @@ __pycache__/
 
 # object files and libraries
 training/**/*.so
+inference/**/*.so
 *.o
 
 # VS data

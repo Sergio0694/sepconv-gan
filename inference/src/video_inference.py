@@ -5,7 +5,7 @@ import cv2
 import tensorflow as tf
 import src.dataset_loader as dataset
 from src.__MACRO__ import LOG, INFO, BAR, RESET_LINE
-from src.ops.gpu_ops import NEAREST_SHADER_MODULE
+from src.ops.gpu_ops import load_ops
 
 PROGRESS_BAR_LENGTH = 20
 
@@ -36,6 +36,7 @@ def open_session(model_path, dataset_path):
 
     # restore the model from the .meta and check point files
     LOG('Restoring model')
+    load_ops()
     meta_file_path = [path for path in os.listdir(model_path) if path.endswith('.meta')][0]
     saver = tf.train.import_meta_graph(os.path.join(model_path, meta_file_path))
     saver.restore(session, tf.train.latest_checkpoint(model_path))
@@ -76,9 +77,7 @@ def process_frames(working_path, session, shader_enabled):
     pipeline_placeholder = graph.get_tensor_by_name('inference_groups:0')
     session.run(pipeline_tensors[0].initializer, feed_dict={pipeline_placeholder: groups})
     x = graph.get_tensor_by_name('x:0')
-    yHat = graph.get_tensor_by_name('inference/uint8_img:0')
-    if shader_enabled:
-        yHat = tf.cast(NEAREST_SHADER_MODULE.nearestshader(tf.cast(yHat, tf.float32), x[:, :, :, :3], x[:, :, :, 3:]), tf.uint8)
+    yHat = graph.get_tensor_by_name('inference/shader/uint8_shaded_img:0' if shader_enabled else 'inference/uint8_img:0')
 
     # process the data
     LOG('Processing frames')

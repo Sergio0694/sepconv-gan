@@ -3,7 +3,7 @@ import cv2
 import numpy as np
 import tensorflow as tf
 from src.__MACRO__ import LOG, ERROR
-from src.ops.gpu_ops import NEAREST_SHADER_MODULE
+from src.ops.gpu_ops import load_ops
 
 def process_frames(model_path, path_0, path_1, shader_enabled):
     '''Generates an intermediate frame from the two in input.
@@ -18,6 +18,7 @@ def process_frames(model_path, path_0, path_1, shader_enabled):
     frame_0, frame_1 = cv2.imread(path_0), cv2.imread(path_1)
     if frame_0.shape != frame_1.shape:
         ERROR('The two input frames have a different size')
+    load_ops()
 
     with tf.Session() as session:
 
@@ -31,9 +32,7 @@ def process_frames(model_path, path_0, path_1, shader_enabled):
         LOG('Initialization')
         graph = tf.get_default_graph()
         x = graph.get_tensor_by_name('x:0')
-        yHat = graph.get_tensor_by_name('inference/uint8_img:0')
-        if shader_enabled:
-            yHat = tf.cast(NEAREST_SHADER_MODULE.nearestshader(tf.cast(yHat, tf.float32), x[:, :, :, :3], x[:, :, :, 3:]), tf.uint8)
+        yHat = graph.get_tensor_by_name('inference/shader/uint8_shaded_img:0' if shader_enabled else 'inference/uint8_img:0')
 
         # process the frames
         LOG('Processing')

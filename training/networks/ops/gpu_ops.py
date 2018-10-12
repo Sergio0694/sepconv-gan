@@ -37,7 +37,7 @@ def NEAREST_SHADER_MODULE(x, frame0, frame1):
     distance_scaled = tf.clip_by_value(distance_raw, 0.0, 32.0) * 8.0
     distance_clip = tf.clip_by_value(distance_scaled, 0.0, 255.0) / 255.0
 
-    # build the TF model
+    # pad with reflection to avoid artifacts on the image edges
     image_pad = tf.pad(distance_clip[:, :, :], [[0, 0], [10, 10], [10, 10]], mode='SYMMETRIC')
     image_4d = image_pad[:, :, :, tf.newaxis]
 

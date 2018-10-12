@@ -36,8 +36,8 @@ def run(model_path):
         # initialize the dataset
         LOG('Creating datasets')
         with tf.name_scope('generator_data'):
-            train_dataset = data_loader.load_train(TRAINING_DATASET_PATH, BATCH_SIZE, IMAGES_WINDOW_SIZE)
-            test_dataset = data_loader.load_test(TEST_DATASET_PATH, IMAGES_WINDOW_SIZE)
+            train_dataset = data_loader.load_train(TRAINING_DATASET_PATH, BATCH_SIZE)
+            test_dataset = data_loader.load_test(TEST_DATASET_PATH)
             gen_iterator = tf.data.Iterator.from_structure(train_dataset.output_types, train_dataset.output_shapes)
             x_train, y = gen_iterator.get_next()
             train_init_op = gen_iterator.make_initializer(train_dataset)
@@ -52,11 +52,7 @@ def run(model_path):
 
         # generator model
         LOG('Creating model')
-        x = tf.placeholder_with_default(
-            x_train,
-            [None, None, None, INPUT_CHANNELS] if IMAGES_WINDOW_SIZE == 1
-            else [None, 3, None, None, INPUT_CHANNELS],
-            name='x')
+        x = tf.placeholder_with_default(x_train, [None, None, None, INPUT_CHANNELS], name='x')
         training = tf.placeholder(tf.bool, name='training_mode')
         with tf.variable_scope('generator', None, [x]):
             yHat = NETWORK_BUILDER(x / 255.0, training)
@@ -298,7 +294,14 @@ if __name__ == '__main__':
     if args['model_path'] is not None:
         import sys
         sys.path.insert(0, os.path.abspath(args['model_path']))
-    from __MACRO__ import *
+    from __MACRO__ import (
+        TENSORBOARD_ROOT_DIR, TENSORBOARD_RUN_DIR, MACRO_PATH, SHOW_TENSORS_LIST,
+        TRAINING_DATASET_PATH, TEST_DATASET_PATH, BATCH_SIZE, NETWORK_BUILDER,
+        TENSORBOARD_LOG_INTERVAL, MAX_MODELS_TO_KEEP, TRAINING_PROGRESS_BAR_LENGTH,
+        INPUT_CHANNELS, PERCEPTUAL_LOSS_ENABLED, GENERATOR_LOSS_TYPE, LossType, PERCEPTUAL_LOSS_FACTOR,
+        LUMINANCE_LOSS_FACTOR, GENERATOR_ADAM_OPTIMIZER, L_LOSS_FACTOR, GENERATOR_GRADIENT_CLIP,
+        INITIAL_GENERATOR_LR, GENERATOR_LR_DECAY_RATE, TRAINING_TOTAL_SAMPLES,
+        DISCRIMINATOR_ENABLED, DISCRIMINATOR_LOSS_FACTOR, DISCRIMINATOR_GRADIENT_CLIP, DISCRIMINATOR_LR)
     import dataset.dataset_loader as data_loader
     from helpers.logger import LOG, INFO, BAR, RESET_LINE
     import networks.discriminators.vgg19 as vgg19_discriminator

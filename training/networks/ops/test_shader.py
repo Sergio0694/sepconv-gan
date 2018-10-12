@@ -49,5 +49,6 @@ if __name__ == '__main__':
     
     # process and display
     shaded_bgr = preview(args['source'], interpolated, following)
-    cv2.imshow('preview', shaded_bgr)
-    cv2.waitKey(10000)
+    shaded_rgb = cv2.cvtColor(shaded_bgr, cv2.COLOR_BGR2RGB)
+    plt.imshow(shaded_rgb)
+    plt.show()

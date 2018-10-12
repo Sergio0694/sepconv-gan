@@ -51,7 +51,7 @@ def build(op):
     DELETE_IF_EXISTS('{}_grad.cu.o'.format(lib_training_path))
 
     # copy the compiled op to the inference folder
-    shutil.move('{}.so'.format(lib_training_path), '{}.so'.format(lib_inference_path))
+    shutil.copy('{}.so'.format(lib_training_path), '{}.so'.format(lib_inference_path))
 
 if __name__ == '__main__':
 

@@ -15,8 +15,8 @@ def preview(frame0_path, interpolated_path, frame1_path):
     frame1_bgr = np.expand_dims(cv2.imread(frame1_path).astype(np.float32), 0)
 
     # apply the shader
-    shaded_f32 = NEAREST_SHADER_MODULE.nearestshader(interpolated_bgr, frame0_bgr, frame1_bgr)[0]
-    shaded_uint8 = tf.cast(shaded_f32, tf.uint8)
+    shaded_f32 = NEAREST_SHADER_MODULE(interpolated_bgr, frame0_bgr, frame1_bgr)
+    shaded_uint8 = tf.cast(shaded_f32, tf.uint8)[0]
     with tf.Session() as session:
         return session.run(shaded_uint8)
 
@@ -49,6 +49,5 @@ if __name__ == '__main__':
     
     # process and display
     shaded_bgr = preview(args['source'], interpolated, following)
-    shaded_rgb = cv2.cvtColor(shaded_bgr, cv2.COLOR_BGR2RGB)
-    plt.imshow(shaded_rgb)
-    plt.show()
+    cv2.imshow('preview', shaded_bgr)
+    cv2.waitKey(10000)

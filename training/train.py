@@ -7,6 +7,7 @@ from shutil import rmtree, copyfile
 import cv2
 import tensorflow as tf
 import numpy as np
+from networks.ops.gpu_ops import NEAREST_SHADER_MODULE
 
 def cleanup():
     '''Deletes leftover folders for previous unfinished training sessions.'''
@@ -145,11 +146,14 @@ def run(model_path):
                                         else _tf.minimize_with_clipping(disc_adam, disc_loss, DISCRIMINATOR_GRADIENT_CLIP, scope='discriminator')
 
         # output image
-        with tf.name_scope('inference', None, [yHat]):
+        with tf.name_scope('inference', None, [yHat, x]):
             clipped_yHat = tf.clip_by_value(yHat, 0.0, 1.0)
-            yHat_proof = tf.verify_tensor_all_finite(clipped_yHat, 'NaN found in output image :(', 'NaN_check_output') * 255.0
+            yHat_proof = tf.verify_tensor_all_finite(clipped_yHat, 'NaN found in output image :(', 'NaN_check_output', name='float32_img') * 255.0
             test_clipped_loss = tf.reduce_mean((yHat_proof - y) ** 2)
             uint8_img = tf.cast(yHat_proof, tf.uint8, name='uint8_img')
+            with tf.name_scope('shader', None, [yHat_proof, x]):
+                shaded_float32 = NEAREST_SHADER_MODULE(yHat_proof, x[:, :, :, :3], x[:, :, :, 3:])
+                tf.cast(shaded_float32, tf.uint8, name='uint8_shaded_img') # inference only
         
         # summaries
         with tf.name_scope('summaries'):

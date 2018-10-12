@@ -30,13 +30,6 @@ __global__ void SepconvGradKernel(
     int _k_offset = ((in * h + iy) * w + ix) * kchannels;
     int _grad_offset = in * _3d_resolution + (iy * w + ix) * 3;
 
-    // Clear the gradients
-    for (int ivh = 0; ivh < kchannels; ivh++)
-    {
-        kv_grad[_k_offset + ivh] = 0.0;
-        kh_grad[_k_offset + ivh] = 0.0;
-    }
-
     // Limits
     int iv_low = iy >= kc_2 ? 0 : kc_2 - iy;
     int iv_high = iy + kc_2 < h ? kchannels : kchannels - (iy + kc_2 - h) - 1;
@@ -76,10 +69,20 @@ void SepconvGradKernelLauncher(
     float* kv_grad,
     float* kh_grad)
 {
+    // Clear the gradient tensors
+    int bytes = n * h * w * kchannels * 4;
+    cudaError_t error = cudaMemset(kv_grad, 0, bytes);
+    if (error != cudaSuccess)
+        printf("Failed to set kv_grad to 0 with error \"%s\".\n", cudaGetErrorString(error));
+    error = cudaMemset(kh_grad, 0, bytes);
+    if (error != cudaSuccess)
+        printf("Failed to set kh_grad to 0 with error \"%s\".\n", cudaGetErrorString(error));
+
+    // Start the gradient kernel
     int ntasks = n * h * w;
     SepconvGradKernel<<<(ntasks + THREADS_PER_BLOCK_BACKWARD - 1) / THREADS_PER_BLOCK_BACKWARD, THREADS_PER_BLOCK_BACKWARD>>>(
         ntasks, grad, input, kv, kh, n, h, w, kchannels, kv_grad, kh_grad);
-    cudaError_t cudaerr = cudaDeviceSynchronize();
-    if (cudaerr != cudaSuccess)
-        printf("SepConv launch failed with error \"%s\".\n", cudaGetErrorString(cudaerr));
+    error = cudaDeviceSynchronize();
+    if (error != cudaSuccess)
+        printf("SepConv launch failed with error \"%s\".\n", cudaGetErrorString(error));
 }

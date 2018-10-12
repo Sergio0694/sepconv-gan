@@ -4,24 +4,26 @@ from random import randint
 import cv2
 import tensorflow as tf
 import numpy as np
-from __MACRO__ import *
+from __MACRO__ import (
+    VERBOSE_MODE, SHOW_TEST_SAMPLES_INFO_ON_LOAD,
+    TRAINING_IMAGES_SIZE, MAX_FLOW, FLOW_MODE,
+    IMAGE_MEAN_VARIANCE, IMAGE_DIFF_MIN_THRESHOLD)
 from helpers.logger import LOG, INFO
 from helpers.debug_tools import calculate_image_difference
 from helpers._cv2 import get_optical_flow_from_rgb, get_bidirectional_prewarped_frames, OpticalFlowEmbeddingType
 
-def load_train(path, size, window):
+def load_train(path, size):
     '''Prepares the input pipeline to train the model. Each batch is made up of 
     n frames [-n, ..., -2, -1, +1, +2, ..., +n] and a ground truth frame 
     as the expected value to be generated from the network.
 
     path(str) -- the directory where the dataset is currently stored
     size(int) -- the batch size for the data pipeline
-    window(int) -- the window size
     '''
 
     assert size > 1     # you don't say?
 
-    groups, _, pipeline = load_core(path, window)
+    groups, _, pipeline = load_core(path)
     return pipeline \
         .shuffle(len(groups), reshuffle_each_iteration=True) \
         .map(lambda x, y: tf.py_func(tf_load_images, inp=[x, y, path], Tout=[tf.float32, tf.float32]), num_parallel_calls=cpu_count()) \
@@ -32,16 +34,15 @@ def load_train(path, size, window):
         .apply(tf.contrib.data.batch_and_drop_remainder(size)) \
         .prefetch(2)
         
-def load_test(path, window):
+def load_test(path):
     '''Prepares the input pipeline to test the model. Each sample is made up of 
     n frames [-n, ..., -2, -1, +1, +2, ..., +n] and a ground truth frame 
     as the expected value to be generated from the network.
 
     path(str) -- the directory where the dataset is currently stored
-    window(int) -- the window size
     '''
 
-    groups, labels, pipeline = load_core(path, window)
+    groups, labels, pipeline = load_core(path)
 
     if SHOW_TEST_SAMPLES_INFO_ON_LOAD:
         for s in zip(groups, labels):
@@ -73,32 +74,30 @@ def load_discriminator_samples(path, size):
         tf.data.Dataset.from_tensor_slices(files) \
         .shuffle(len(files), reshuffle_each_iteration=True) \
         .map(lambda x: tf.py_func(tf_load_image, inp=[x, path], Tout=[tf.float32]), num_parallel_calls=cpu_count()) \
-        .filter(lambda x: tf.py_func(tf_ensure_min_variance, inp=[x], Tout=[tf.bool])) \
+        .filter(lambda x: tf.py_func(tf_validate_variance, inp=[x], Tout=[tf.bool])) \
         .repeat() \
-        .batch(size) \
-        .prefetch(1)
+        .apply(tf.contrib.data.batch_and_drop_remainder(size)) \
+        .prefetch(2)
 
 # ====================
 # auxiliary methods
 # ====================
 
-def load_core(path, window):
+def load_core(path):
     '''Auxiliary method for the load_train and load_test methods'''
 
-    assert window >= 1      # same here
-
-    # load the available frames, group by the requested window size
+    # load the available frames
     files = os.listdir(path)
     files.sort()
     groups, labels = [], []
-    for i in range(len(files) - window * 2):
-        candidates = files[i: i + window] + files[i + window + 1: i + 2 * window + 1]
+    for i in range(len(files) - 2):
+        candidates = files[i: i + 1] + files[i + 2: i + 3]
 
         # filename format: v0-s0-b1_0.jpg
         info1, info2 = candidates[0].split('_')[0].split('-'), candidates[-1].split('_')[0].split('-')
         if info1[0] == info2[0] and info1[1] == info2[1] and info1[2] == info2[2]:
             groups += [candidates]
-            labels += [files[i + window]]
+            labels += [files[i + 1]]
     if VERBOSE_MODE:
         LOG('{} total dataset file(s)'.format(len(files)))
         INFO('{} generated sample(s)'.format(len(groups)))
@@ -127,24 +126,25 @@ def tf_load_image(sample, directory):
 
     image = cv2.imread(os.path.join(str(directory)[2:-1], str(sample)[2:-1])).astype(np.float32)
 
-    x_offset = randint(0, image.shape[1] - TRAINING_IMAGES_SIZE)
-    y_offset = randint(0, image.shape[0] - TRAINING_IMAGES_SIZE)
+    # randomly resize the image to cover more view area with a single crop
+    y_t = randint(TRAINING_IMAGES_SIZE, image.shape[0] - 2 * MAX_FLOW) + 2 * MAX_FLOW
+    x_t = y_t * image.shape[1] // image.shape[0]
+    image = cv2.resize(image, (x_t, y_t))
 
-    return image[
-        y_offset:y_offset + TRAINING_IMAGES_SIZE, \
-        x_offset:x_offset + TRAINING_IMAGES_SIZE, :
-    ]
-
-def tf_ensure_min_variance(sample):
-    '''Checks if the input image reaches the minimum variance threshold'''
-
-    return np.max(cv2.meanStdDev(sample)[1]) >= IMAGE_MIN_VARIANCE_THRESHOLD
+    # setup
+    max_flow_x = min(MAX_FLOW, image.shape[1] - TRAINING_IMAGES_SIZE)
+    max_flow_y = min(MAX_FLOW, image.shape[0] - TRAINING_IMAGES_SIZE)
+    x_offset = randint(max_flow_x, image.shape[1] - TRAINING_IMAGES_SIZE - max_flow_x)
+    y_offset = randint(max_flow_y, image.shape[0] - TRAINING_IMAGES_SIZE - max_flow_y)
+    
+    # same slicing for the image
+    return image[y_offset:y_offset + TRAINING_IMAGES_SIZE, x_offset:x_offset + TRAINING_IMAGES_SIZE, :]
 
 def tf_preprocess_train_images(samples, label):
     '''Clips the sample images and adds random perturbations to augment the dataset and increase variance.
     
-    samples(list<tf.string>) -- a tensor with the list of filenames to load
-    label(tf.string) -- a tensor with the filename of the ground truth image
+    samples(list<np.array>) -- a tensor with the list of filenames to load
+    label(np.array) -- a tensor with the filename of the ground truth image
     '''
     
     assert label.shape[0] >= TRAINING_IMAGES_SIZE and label.shape[1] >= TRAINING_IMAGES_SIZE
@@ -152,7 +152,8 @@ def tf_preprocess_train_images(samples, label):
     # randomly resize the images to cover more view area with a single crop
     y_t = randint(TRAINING_IMAGES_SIZE, label.shape[0] - 2 * MAX_FLOW) + 2 * MAX_FLOW
     x_t = y_t * label.shape[1] // label.shape[0]
-    samples = np.array([cv2.resize(sample, (x_t, y_t)) for sample in samples], dtype=np.float32, copy=False)
+    mode = cv2.INTER_AREA if randint(0, 1) == 0 else cv2.INTER_LINEAR
+    samples = np.array([cv2.resize(sample, (x_t, y_t), interpolation=mode) for sample in samples], dtype=np.float32, copy=False)
     label = cv2.resize(label, (x_t, y_t))
 
     # setup
@@ -164,70 +165,68 @@ def tf_preprocess_train_images(samples, label):
     y_flow = randint(0, max_flow_y)
 
     # clip to square, add random flow
-    if samples.shape[0] == 2:
-        x = np.array([
-            samples[0][
-                y_offset - y_flow:y_offset + TRAINING_IMAGES_SIZE - y_flow, \
-                x_offset - x_flow:x_offset + TRAINING_IMAGES_SIZE - x_flow, :
-            ],
-            samples[1][
-                y_offset + y_flow:y_offset + TRAINING_IMAGES_SIZE + y_flow, \
-                x_offset + x_flow:x_offset + TRAINING_IMAGES_SIZE + x_flow, :
-            ]
-        ], dtype=np.float32, copy=False)
-    else:
-        raise NotImplementedError('Unsupported windows size')
+    x = np.array([
+        samples[0][
+            y_offset - y_flow:y_offset + TRAINING_IMAGES_SIZE - y_flow, \
+            x_offset - x_flow:x_offset + TRAINING_IMAGES_SIZE - x_flow, :
+        ],
+        samples[1][
+            y_offset + y_flow:y_offset + TRAINING_IMAGES_SIZE + y_flow, \
+            x_offset + x_flow:x_offset + TRAINING_IMAGES_SIZE + x_flow, :
+        ]
+    ], dtype=np.float32, copy=False)
     
-    # same slicing for the label, regardless of the window size
+    # same slicing for the label
     y = label[y_offset:y_offset + TRAINING_IMAGES_SIZE, x_offset:x_offset + TRAINING_IMAGES_SIZE, :]
 
-    # randomly reverse the frames order
-    if randint(0, 1) == 0:
-        x = np.flip(x, 0)
+    # random permutations
+    choice = randint(0, 2)
+    if choice == 0:
+        x = np.flip(x, 1)
+        y = np.flip(y, 0) # vertical flip
+    elif choice == 1:
+        x = np.flip(x, 2)
+        y = np.flip(y, 1) # horizontal flip
+    else:
+        x = np.flip(x, 0) # reverse the frames order
 
     return x, y
 
 def tf_final_input_transform(samples, label):
     '''Reshapes the inputs as needed, and appends the flow estimation, if requested.'''
 
-    if IMAGES_WINDOW_SIZE == 1:
+    # here the inputs are [2, h, w, 3]
+    samples_t = np.transpose(samples, [1, 2, 0, 3])
+    samples_r = np.reshape(samples_t, [samples_t.shape[0], samples_t.shape[1], -1])
 
-        # here the inputs are [2, h, w, 3]
-        samples_t = np.transpose(samples, [1, 2, 0, 3])
-        samples_r = np.reshape(samples_t, [samples_t.shape[0], samples_t.shape[1], -1])
-
-        if FLOW_MODE == OpticalFlowEmbeddingType.NONE:
-            return samples_r, label
-        if FLOW_MODE == OpticalFlowEmbeddingType.DIRECTIONAL:
-            angle, strength = get_optical_flow_from_rgb(samples[0], samples[1], OpticalFlowEmbeddingType.DIRECTIONAL)
-            return np.concatenate([samples_r, angle, strength], -1), label
-        if FLOW_MODE == OpticalFlowEmbeddingType.BIDIRECTIONAL:
-            raise NotImplementedError('Not supported yet')
-        if FLOW_MODE == OpticalFlowEmbeddingType.BIDIRECTIONAL_PREWARPED:
-            forward, backward = get_bidirectional_prewarped_frames(samples[0], samples[1])
-            return np.concatenate([samples_r, forward, backward], -1), label
-        raise ValueError('Invalid flow mode')
-
-    elif IMAGES_WINDOW_SIZE == 2:
-        raise NotImplementedError('Window size not supported')
-    else:
-        raise ValueError('Invalid window size')
+    if FLOW_MODE == OpticalFlowEmbeddingType.NONE:
+        return samples_r, label
+    if FLOW_MODE == OpticalFlowEmbeddingType.DIRECTIONAL:
+        angle, strength = get_optical_flow_from_rgb(samples[0], samples[1], OpticalFlowEmbeddingType.DIRECTIONAL)
+        return np.concatenate([samples_r, angle, strength], -1), label
+    if FLOW_MODE == OpticalFlowEmbeddingType.BIDIRECTIONAL:
+        raise NotImplementedError('Not supported yet')
+    if FLOW_MODE == OpticalFlowEmbeddingType.BIDIRECTIONAL_PREWARPED:
+        forward, backward = get_bidirectional_prewarped_frames(samples[0], samples[1])
+        return np.concatenate([samples_r, forward, backward], -1), label
+    raise ValueError('Invalid flow mode')
 
 def tf_calculate_batch_errors(samples, label):
     '''Shared code for ensure_difference_middle_threshold and ensure_difference_min_threshold'''
 
     # prepare the temporary list of all the sample images
     size = np.prod(samples[0].shape)
-    if samples.shape[0] == 2:
-        images = [samples[0]] + [label] + [samples[1]]
-    else:
-        raise NotImplementedError('Unsupported windows size')
+    images = [samples[0]] + [label] + [samples[1]]
 
     # compute the interval errors
     return [
         np.sum((pair[0] - pair[-1]) ** 2, dtype=np.float32) / size
         for pair in zip(images, images[1:])
     ]
+
+def tf_validate_variance(image):
+    _, var = cv2.meanStdDev(image)
+    return np.sum(var) / 3 > IMAGE_MEAN_VARIANCE
 
 def tf_ensure_difference_min_threshold(samples, label):
     '''Computes the mean squared error between a series of images and returns whether
@@ -240,4 +239,4 @@ def tf_ensure_difference_min_threshold(samples, label):
     return all([
         IMAGE_DIFF_MIN_THRESHOLD < error
         for error in tf_calculate_batch_errors(samples, label)
-    ])
+    ]) and tf_validate_variance(label)

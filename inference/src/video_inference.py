@@ -1,10 +1,11 @@
 from multiprocessing import Process, Queue
-from os import listdir
+import os
 from time import time
 import cv2
 import tensorflow as tf
 import src.dataset_loader as dataset
 from src.__MACRO__ import LOG, INFO, BAR, RESET_LINE
+from src.ops.gpu_ops import load_ops
 
 PROGRESS_BAR_LENGTH = 20
 
@@ -35,8 +36,9 @@ def open_session(model_path, dataset_path):
 
     # restore the model from the .meta and check point files
     LOG('Restoring model')
-    meta_file_path = [path for path in listdir(model_path) if path.endswith('.meta')][0]
-    saver = tf.train.import_meta_graph('{}\\{}'.format(model_path, meta_file_path))
+    load_ops()
+    meta_file_path = [path for path in os.listdir(model_path) if path.endswith('.meta')][0]
+    saver = tf.train.import_meta_graph(os.path.join(model_path, meta_file_path))
     saver.restore(session, tf.train.latest_checkpoint(model_path))
 
     # setup the input pipeline
@@ -48,7 +50,13 @@ def open_session(model_path, dataset_path):
     
     return session
 
-def process_frames(working_path, session):
+def process_frames(working_path, session, shader_enabled):
+    '''Produces a series of interpolated frames from a source collection of consecutive frames.
+
+    working_path(str) -- the path of the folder that contains the frames to process
+    session(tf.Session) -- the current TF session to use
+    shader_enabled(bool) -- indicates whether or not to apply the post-processing shader
+    '''
     
     # load the inference raw data
     LOG('Preparing frames')
@@ -69,7 +77,7 @@ def process_frames(working_path, session):
     pipeline_placeholder = graph.get_tensor_by_name('inference_groups:0')
     session.run(pipeline_tensors[0].initializer, feed_dict={pipeline_placeholder: groups})
     x = graph.get_tensor_by_name('x:0')
-    yHat = graph.get_tensor_by_name('inference/uint8_img:0')
+    yHat = graph.get_tensor_by_name('inference/shader/uint8_shaded_img:0' if shader_enabled else 'inference/uint8_img:0')
 
     # process the data
     LOG('Processing frames')
@@ -84,7 +92,7 @@ def process_frames(working_path, session):
 
         # inference
         prediction = session.run(yHat, feed_dict={x: frames})
-        frame_path = '{}\\{}_{}'.format(working_path, filename, extension)
+        frame_path = os.path.join(working_path, '{}_{}'.format(filename, extension))
         frames_queue.put((frame_path, prediction))
 
         # update the UI

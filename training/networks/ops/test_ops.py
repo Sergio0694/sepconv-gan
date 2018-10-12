@@ -47,7 +47,7 @@ def test_sepconv():
 if __name__ == '__main__':
 
     # parse
-    parser = argparse.ArgumentParser(description='Tests the gradient of a custom op.')
+    parser = argparse.ArgumentParser(description='Tests a custom op.')
     parser.add_argument('-op', help='The name of the op to test', required=True)
     args = vars(parser.parse_args())
 

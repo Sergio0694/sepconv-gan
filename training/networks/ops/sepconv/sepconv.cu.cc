@@ -63,7 +63,7 @@ __global__ void SepconvKernel(
     int ntasks = n * h * w * 3;
     SepconvKernel<<<(ntasks + THREADS_PER_BLOCK_FORWARD - 1) / THREADS_PER_BLOCK_FORWARD, THREADS_PER_BLOCK_FORWARD>>>(
         ntasks, input, kv, kh, h, w, kchannels, output);
-    cudaError_t cudaerr = cudaDeviceSynchronize();
-    if (cudaerr != cudaSuccess)
-        printf("SepConv launch failed with error \"%s\".\n", cudaGetErrorString(cudaerr));
+    cudaError_t error = cudaDeviceSynchronize();
+    if (error != cudaSuccess)
+        printf("SepConv launch failed with error \"%s\".\n", cudaGetErrorString(error));
 }

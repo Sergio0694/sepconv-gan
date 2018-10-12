@@ -2,13 +2,13 @@ import cv2
 import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
-from __MACRO__ import *
+from __MACRO__ import TRAINING_DATASET_PATH
 import dataset.dataset_loader as data_loader
 
 def show_samples(size):
 
     # pipeline setup
-    train_dataset = data_loader.load_train(TRAINING_DATASET_PATH, size, IMAGES_WINDOW_SIZE)
+    train_dataset = data_loader.load_train(TRAINING_DATASET_PATH, size)
     gen_iterator = train_dataset.make_one_shot_iterator()
     x_train, y = gen_iterator.get_next()
 

@@ -11,10 +11,11 @@ def minimize_with_clipping(optimizer, loss, clip=5.0, scope=None):
     scope(str) -- the optional scope for the variables of the optimizer'''
 
     gradients, variables = zip(*optimizer.compute_gradients(loss, var_list=tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope=scope)))
-    gradients = [
-        None if gradient is None else tf.clip_by_norm(gradient, clip)
-        for gradient in gradients
-    ]
+    with tf.name_scope('clipping'):
+        gradients = [
+            None if gradient is None else tf.clip_by_norm(gradient, clip)
+            for gradient in gradients
+        ]
     return optimizer.apply_gradients(zip(gradients, variables))
 
 def initialize_variables(session):
@@ -29,6 +30,36 @@ def initialize_variables(session):
     
     if len(not_initialized_vars):
         session.run(tf.variables_initializer(not_initialized_vars))
+
+def get_parent_by_match(tensor, tokens):
+    '''Retrieves the parent tensor with the specified name parts.
+
+    tensor(tf.Tensor) -- the child tensor
+    tokens(list<str>) -- the name parts to look for
+    '''
+
+    for parent in tensor.op.inputs:
+        if all((token in parent.name for token in tokens)):
+            return parent
+        return get_parent_by_match(parent, tokens)
+    return None
+
+def luminance_loss(t1, t2):
+    '''Gets a loss based on the L2 error on the luminance difference between the two input tensors.
+    The input images must have values in the [0, 1] range.
+
+    t1(tf.Tensor) -- a tensor which represents a batch of BGR images [b, h, w, 3]
+    t2(tf.Tensor) -- a tensor with the same shape as the other
+    '''
+
+    assert len(t1.shape) == 4
+    assert t1.shape[-1] == 3
+
+    def get_luminance(image):
+        b, g, r = tf.unstack(image, axis=-1)
+        return 0.0722 * b + 0.7152 * g + 0.2126 * r   
+    
+    return tf.reduce_mean((get_luminance(t1) - get_luminance(t2)) ** 2)
 
 class DynamicRate(object):
     '''A class that produces learning rates as specified from the 

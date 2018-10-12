@@ -3,7 +3,7 @@ import re
 from shutil import copyfile, rmtree
 import src.ffmpeg_helper as ffmpeg
 from src.__MACRO__ import LOG, INFO, ERROR
-from src.inference import process_frames, open_session
+from src.video_inference import process_frames, open_session
 
 def frames_name_comparer(name):
     '''Compares two filenames and returns a tuple indicating
@@ -33,7 +33,7 @@ def convert(args):
     if duration < 2:
         ERROR('The video file is either empty or too short')
     INFO('Total duration: {}'.format(format_duration(duration)))
-    INFO('Framerate: {}/1001'.format(framerate))
+    INFO('Framerate: {}/{}'.format(framerate[0], framerate[1]))
     INFO('Resolution: {}x{}'.format(width, height))
 
     # Validate the target resolution
@@ -45,9 +45,9 @@ def convert(args):
 
     # calculate the framerate parameters to encode the video chunks
     if args['interpolation'] == 'double':
-        in_fps, out_fps = '{}/1001'.format(framerate * 2), '{}/1001'.format(framerate * 2)
+        in_fps, out_fps = '{}/{}'.format(framerate[0] * 2, framerate[1]), '{}/{}'.format(framerate[0] * 2, framerate[1])
     else:
-        in_fps, out_fps = '{}/1001'.format(framerate), '{}/1001'.format(framerate)
+        in_fps, out_fps = '{}/{}'.format(framerate[0], framerate[1]), '{}/{}'.format(framerate[0], framerate[1])
 
     # Loop until all video chunks have been created
     frames_path = os.path.join(args['working_dir'], 'frames')
@@ -63,10 +63,10 @@ def convert(args):
             extract_ok = ffmpeg.extract_frames(
                 args['source'], frames_path,
                 [args['scale'], -1] if args['scale'] is not None else None,
-                video_timestep, step_size, extension=args['frame_quality'], timeout=None)
+                video_timestep, step_size, extension=args['frame_quality'])
 
             # progress checks
-            if not extract_ok or (video_timestep == 0 and not os.listdir(frames_path)): 
+            if not extract_ok or (video_timestep == 0 and not os.listdir(frames_path)):
                 rmtree(args['working_dir'])
                 ERROR('Failed to extract frames')
             video_timestep += step_size
@@ -74,7 +74,7 @@ def convert(args):
             # Inference pass on the n-th video chunk
             if not os.listdir(frames_path):
                 break
-            process_frames(frames_path, session)
+            process_frames(frames_path, session, args['post_processing'] == 'shader')
 
             # sort the frames by alternating the original and the interpolated
             LOG('Preparing generated frames')     
@@ -83,20 +83,20 @@ def convert(args):
 
             # duplicate the last frame (no interpolation available)
             copy_filename = '{}_{}'.format(re.findall('([0-9]+)', frames[-1])[0], frames[-1][-4:])
-            copyfile('{}\\{}'.format(frames_path, frames[-1]), '{}\\{}'.format(frames_path, copy_filename))
+            copyfile(os.path.join(frames_path, frames[-1]), os.path.join(frames_path, copy_filename))
             frames += [copy_filename]
             INFO('{} total frame(s) to encode'.format(len(frames)))
 
             # rename the source frames to encode
             for i in range(len(frames), 0, -1):
-                source = '{}\\{}'.format(frames_path, frames[i - 1])
-                destination = '{}\\{:03d}.{}'.format(frames_path, i, args['frame_quality'])
+                source = os.path.join(frames_path, frames[i - 1])
+                destination = os.path.join(frames_path, '{:05d}.{}'.format(i, args['frame_quality']))
                 os.rename(source, destination)
 
             # encode the interpolated video
             LOG('Encoding video chunk #{}'.format(video_timestep // step_size))
             chunk_path = os.path.join(args['working_dir'], '_{}.mp4'.format(chunk_timestep))
-            ffmpeg.create_video('{}\\%03d.{}'.format(frames_path, args['frame_quality']), chunk_path, in_fps, out_fps, args['encoder'], args['crf'], args['preset'])
+            ffmpeg.create_video(os.path.join(frames_path, '%05d.{}'.format(args['frame_quality'])), chunk_path, in_fps, out_fps, args['encoder'], args['crf'], args['preset'])
             chunks_paths += [chunk_path]
             chunk_timestep += 1
 

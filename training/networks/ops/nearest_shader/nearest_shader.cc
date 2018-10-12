@@ -9,6 +9,7 @@ REGISTER_OP("Nearestshader")
     .Input("source: float")      // A [batch, height, width, 3] tensor
     .Input("frame_0: float")
     .Input("frame_1: float")
+    .Input("delta_map: float")
     .Output("output: float")
     .SetShapeFn([](::tensorflow::shape_inference::InferenceContext* c)
 {    
@@ -29,6 +30,10 @@ REGISTER_OP("Nearestshader")
     // Ensure both frames have the same shape
     TF_RETURN_IF_ERROR(c->Merge(frame_0_shape, frame_1_shape, &frame_1_shape));
 
+    // Ensure the delta map has rank 3
+    shape_inference::ShapeHandle delta_map_shape;
+    TF_RETURN_IF_ERROR(c->WithRank(c->input(3), 3, &delta_map_shape));
+
     // The output has the same size as the input
     c->set_output(0, c->input(0));
 
@@ -40,6 +45,7 @@ void NearestShaderKernelLauncher(
     const float* input, 
     const float* frame_0,
     const float* frame_1,
+    const float* delta_map,
     const int n, 
     const int h,
     const int w,
@@ -54,17 +60,19 @@ public:
     void Compute(OpKernelContext* context) override 
     {
         // Check the number of tensors
-        DCHECK_EQ(3, context->num_inputs());
+        DCHECK_EQ(4, context->num_inputs());
 
         // Get the input tensor and the two kernels
         const Tensor& input = context->input(0);
         const Tensor& frame_0 = context->input(1);
         const Tensor& frame_1 = context->input(2);
+        const Tensor& delta_map = context->input(3);
 
         // Check the shapes of the input and kernel tensors
         const TensorShape& input_shape = input.shape();
         const TensorShape& frame_0_shape = frame_0.shape();
         const TensorShape& frame_1_shape = frame_1.shape();
+        const TensorShape& delta_map_shape = delta_map.shape();
 
         // Get the batch parameters
         const int n = input_shape.dim_size(0);
@@ -78,8 +86,13 @@ public:
         // Ensure all the input tensors have the same 2D resolution
         DCHECK_EQ(h, frame_0_shape.dim_size(1));
         DCHECK_EQ(h, frame_1_shape.dim_size(1));
-        DCHECK_EQ(w, frame_0_shape.dim_size(2));        
+        DCHECK_EQ(w, frame_0_shape.dim_size(2));
         DCHECK_EQ(w, frame_1_shape.dim_size(2));
+
+        // Ensure the delta map has a valid shape
+        DCHECK_EQ(n, delta_map_shape.dim_size(0));
+        DCHECK_EQ(h, delta_map_shape.dim_size(1));
+        DCHECK_EQ(w, delta_map_shape.dim_size(2));
 
         // Create output tensor
         Tensor* output = NULL;
@@ -89,12 +102,14 @@ public:
         auto f_input = input.flat<float>();
         auto f_frame_0 = frame_0.flat<float>();
         auto f_frame_1 = frame_1.flat<float>();
+        auto f_delta_map = delta_map.flat<float>();
         auto f_output = output->template flat<float>();
 
         NearestShaderKernelLauncher(
             f_input.data(),
             f_frame_0.data(),
             f_frame_1.data(),
+            f_delta_map.data(),
             n, 
             h, 
             w,

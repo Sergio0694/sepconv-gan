@@ -281,7 +281,7 @@ def save_frame(queue):
             break
 
         # save the new test frame
-        cv2.imwrite(task[0], task[1], [int(cv2.IMWRITE_PNG_COMPRESSION), 0])
+        cv2.imwrite(task[0], task[1], [int(cv2.IMWRITE_PNG_COMPRESSION), 9])
 
 if __name__ == '__main__':
 

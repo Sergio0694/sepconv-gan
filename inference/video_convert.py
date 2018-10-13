@@ -10,7 +10,6 @@ def setup():
     # get arguments
     parser = argparse.ArgumentParser(description='Re-encode a source video with increased framerate.')
     parser.add_argument('-source', help='The video file to convert', required=True)
-    parser.add_argument('--frame-quality', default='bmp', help='The format of intermediate frames [jpg|png|bmp].')
     parser.add_argument('-scale', default=None, help='The optional scaling of the video (horizontal resolution).')
     parser.add_argument('--model-path', default=None, help='The folder with the trained model to use.', required=True)    
     parser.add_argument('--working-dir', default=None, help='An optional path for the working dir to use to store temporary files.')
@@ -29,8 +28,7 @@ def setup():
     # validate
     if not os.path.isfile(args['source']):
         ERROR('The input file does not exist')
-    if args['frame_quality'] not in ['jpg', 'png', 'bmp']:
-        ERROR('The frame quality must be either jpb, png or bmp.')
+    args['frame_quality'] = 'png' # lossless but with file size compression
     if args['scale'] != None:
         if not args['scale'].isdigit() or int(args['scale']) < 240:
             ERROR('The scale must be at least equal to 240.')

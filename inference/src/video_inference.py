@@ -21,9 +21,9 @@ def save_frame(queue, extension):
         if extension == 'jpg':
             cv2.imwrite(task[0], task[1][0], [int(cv2.IMWRITE_JPEG_QUALITY), 100])
         elif extension == 'png':
-            cv2.imwrite(task[0], task[1][0], [int(cv2.IMWRITE_PNG_COMPRESSION), 0])
+            cv2.imwrite(task[0], task[1][0], [int(cv2.IMWRITE_PNG_COMPRESSION), 9])
         else:
-            cv2.imwrite(task[0], task[1][0]) # lossless .bmp image
+            cv2.imwrite(task[0], task[1][0]) # any other extension
 
 def open_session(model_path, dataset_path):
     '''Loads a saved moden and opens a session for the inference pass.

@@ -36,7 +36,12 @@ def setup():
     # process and save the frame
     prediction = process_frames(args['model_path'], args['source'], following, args['post_processing'] == 'shader')
     save_path = os.path.join(os.path.dirname(args['source']), '{}_.{}'.format(index, extension))
-    cv2.imwrite(save_path, prediction, [int(cv2.IMWRITE_PNG_COMPRESSION), 0, int(cv2.IMWRITE_JPEG_QUALITY), 100])
+    if extension == 'jpg':
+        cv2.imwrite(save_path, prediction, [int(cv2.IMWRITE_JPEG_QUALITY), 100])
+    elif extension == 'png':
+        cv2.imwrite(save_path, prediction, [int(cv2.IMWRITE_PNG_COMPRESSION), 9])
+    else:
+        cv2.imwrite(save_path, prediction) # any other extension
 
     # display the picture
     image = cv2.cvtColor(prediction, cv2.COLOR_BGR2RGB)

@@ -59,6 +59,16 @@ def load_test(path):
         .batch(1) \
         .prefetch(1) # only process one sample at a time to avoid OOM issues in inference
 
+def load_single_test(path):
+    '''Loads a single test sample from the given test directory.'''
+
+    files = os.listdir(path)
+    files.sort()
+    frames = files[:3]
+    frame0, frame1 = cv2.imread(os.path.join(path, frames[0])), cv2.imread(os.path.join(path, frames[-1]))
+    return np.concatenate((frame0, frame1), -1)[np.newaxis, :, :, :]
+
+
 def load_discriminator_samples(path, size):
     '''Prepares the input pipeline for the discriminator model, with the same resolution of
     the frames used for the generator model.

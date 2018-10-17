@@ -210,6 +210,11 @@ def run(model_path):
                 LOG('Restoring previous model...')
                 saver.restore(session, tf.train.latest_checkpoint(model_path))
 
+                LOG('Testing loaded network...')
+                test_frames = data_loader.load_single_test(TEST_DATASET_PATH)
+                test_img_uint8 = session.run(uint8_img, feed_dict={training: False, x: test_frames})
+                cv2.imwrite(os.path.join(TENSORBOARD_RUN_DIR, '0_yHat_VALIDATION.png'), test_img_uint8[0], [int(cv2.IMWRITE_PNG_COMPRESSION), 9])
+
             LOG('Training started...') 
             while samples < TRAINING_TOTAL_SAMPLES:
                 if samples // TENSORBOARD_LOG_INTERVAL > step:

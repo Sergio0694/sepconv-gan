@@ -8,6 +8,19 @@ import cv2
 import tensorflow as tf
 import numpy as np
 from networks.ops.gpu_ops import NEAREST_SHADER_MODULE
+from __MACRO__ import (
+    TENSORBOARD_ROOT_DIR, TENSORBOARD_RUN_DIR, MACRO_PATH, SHOW_TENSORS_LIST,
+    TRAINING_DATASET_PATH, TEST_DATASET_PATH, BATCH_SIZE,
+    TENSORBOARD_LOG_INTERVAL, MAX_MODELS_TO_KEEP, TRAINING_PROGRESS_BAR_LENGTH,
+    INPUT_CHANNELS, PERCEPTUAL_LOSS_ENABLED, GENERATOR_LOSS_TYPE, LossType, PERCEPTUAL_LOSS_FACTOR,
+    LUMINANCE_LOSS_FACTOR, GENERATOR_ADAM_OPTIMIZER, L_LOSS_FACTOR, GENERATOR_GRADIENT_CLIP,
+    INITIAL_GENERATOR_LR, GENERATOR_LR_DECAY_RATE, TRAINING_TOTAL_SAMPLES,
+    DISCRIMINATOR_ENABLED, DISCRIMINATOR_LOSS_FACTOR, DISCRIMINATOR_GRADIENT_CLIP, DISCRIMINATOR_LR)
+import dataset.dataset_loader as data_loader
+from helpers.logger import LOG, INFO, BAR, RESET_LINE
+import networks.discriminators.vgg19 as vgg19_discriminator
+import networks.pretrained.vgg19 as vgg19
+import networks._tf as _tf
 
 def cleanup():
     '''Deletes leftover folders for previous unfinished training sessions.'''
@@ -299,19 +312,7 @@ if __name__ == '__main__':
     if args['model_path'] is not None:
         import sys
         sys.path.insert(0, os.path.abspath(args['model_path']))
-    from __MACRO__ import (
-        TENSORBOARD_ROOT_DIR, TENSORBOARD_RUN_DIR, MACRO_PATH, SHOW_TENSORS_LIST,
-        TRAINING_DATASET_PATH, TEST_DATASET_PATH, BATCH_SIZE, NETWORK_BUILDER,
-        TENSORBOARD_LOG_INTERVAL, MAX_MODELS_TO_KEEP, TRAINING_PROGRESS_BAR_LENGTH,
-        INPUT_CHANNELS, PERCEPTUAL_LOSS_ENABLED, GENERATOR_LOSS_TYPE, LossType, PERCEPTUAL_LOSS_FACTOR,
-        LUMINANCE_LOSS_FACTOR, GENERATOR_ADAM_OPTIMIZER, L_LOSS_FACTOR, GENERATOR_GRADIENT_CLIP,
-        INITIAL_GENERATOR_LR, GENERATOR_LR_DECAY_RATE, TRAINING_TOTAL_SAMPLES,
-        DISCRIMINATOR_ENABLED, DISCRIMINATOR_LOSS_FACTOR, DISCRIMINATOR_GRADIENT_CLIP, DISCRIMINATOR_LR)
-    import dataset.dataset_loader as data_loader
-    from helpers.logger import LOG, INFO, BAR, RESET_LINE
-    import networks.discriminators.vgg19 as vgg19_discriminator
-    import networks.pretrained.vgg19 as vgg19
-    import networks._tf as _tf
+    from __MACRO__ import NETWORK_BUILDER # the model must match the one from the saved weights
 
     # start or resume the training
     run(args['model_path'])

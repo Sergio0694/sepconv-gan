@@ -6,7 +6,6 @@ import cv2
 import numpy as np
 from helpers.ffmpeg_helper import *
 from helpers.logger import LOG, INFO, BAR, RESET_LINE
-from __MACRO__ import *
 
 SUPPORTED_VIDEO_FORMATS = ('.mkv', '.avi', '.mp4', '.m2ts')
 
@@ -42,8 +41,7 @@ def process_video_file(queue, cpu_id, output_path, seconds, splits, min_duration
         # check the video duration, skip if needed
         duration = get_video_duration(video_path)
         if duration < min_duration:
-            if VERBOSE_MODE:
-                INFO('Video too short: {}s'.format(duration))
+            INFO('Video too short: {}s'.format(duration))
             continue
 
         # extract frames evenly from the specified number of video sections

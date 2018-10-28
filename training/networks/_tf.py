@@ -5,6 +5,12 @@ from tensorflow.python.framework import ops
 from tensorflow.python.training import optimizer
 import tensorflow as tf
 
+def prelu(x, name):
+    '''Parametric ReLU activation function.'''
+
+    alpha = tf.get_variable(name, shape=x.get_shape()[-1], dtype=x.dtype, initializer=tf.constant_initializer(0.1))
+    return tf.maximum(0.0, x) + alpha * tf.minimum(0.0, x)
+
 def minimize_with_clipping(optimizer, loss, clip=5.0, scope=None):
     '''Returns an operation that minimizes the input loss function, 
     while clipping the gradients by the specified local norm.
@@ -85,13 +91,17 @@ class DynamicRate(object):
 class DecayingRate(object):
     '''A class that returns an exponentially decaying learning rate.'''
 
-    def __init__(self, rate, decay=0.94):
+    def __init__(self, rate, decay=0.94, sustain=0):
         self.rate = rate
         self.decay = decay
+        self.sustain = sustain
 
     def get(self):
         '''Returns the appropriate learning rate for the current training step.'''
         
+        if self.sustain > 0:
+            self.sustain -= 1
+            return self.rate
         lr, self.rate = self.rate, self.rate ** (1.0 / self.decay)
         return lr
 

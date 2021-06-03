@@ -1,0 +1,7 @@
+# Frame interpolation via adaptive separable convolution, adversarial training and post-processing pixel shaders
+
+This project picks up from the work of the "Video frame interpolation via adaptive separable convolution" paper ([here](http://web.cecs.pdx.edu/~fliu/papers/iccv2017-interp.pdf)), using a similar network with the same separable convolution operation to generate the output frames. In addition to that, the network training has been modified with the addition of a GAN component, using a dedicated fully connected stack on top of a pretrained VGG-19 network. The cost function has also been altered to include an L1 factor, and a custom pixel shader has been applied to the output frames to try to shift some specific work away from the network itself, giving more room for the available weights to focus on the motion flow estimation task.
+
+<a href="/docs/sepconv-gan.pdf"><img src="https://user-images.githubusercontent.com/10199417/120643506-8c105e00-c476-11eb-920f-f48623cfcf90.png" />
+
+> **DISCLAIMER:** this repository is provided as is, and it's no longer being actively maintained. This project was developed during a university course and it hasn't been officially presented as a research paper. The goal of this repository is just to share the work I've been doing in this area instead of just keeping it private and to possibly act as reference for anyone interested in having a look.
